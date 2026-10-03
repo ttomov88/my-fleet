@@ -1,16 +1,25 @@
-const CACHE_NAME = "fleet-log-v2";
-const ASSETS = [
-  "./",
-  "./index.html",
-  "./manifest.json",
+// Bump CACHE_NAME whenever icons or manifest.json change: those are served cache-first.
+const CACHE_NAME = "fleet-log-v4";
+// The app itself: these must download for a new version to install.
+const CORE = ["./", "./index.html", "./manifest.json"];
+// Nice to have offline. A missing or misplaced icon must never block an app update.
+const OPTIONAL = [
   "./icons/icon-192.png",
   "./icons/icon-512.png",
-  "./icons/icon-180-maskable.png"
+  "./icons/icon-180-maskable.png",
+  "./icons/icon-512-maskable.png",
+  "./icons/badge-96.png"
 ];
 
 self.addEventListener("install", (event) => {
+  // cache: "reload" skips the browser's HTTP cache so a new version never stores stale files.
+  const fresh = (url) => new Request(url, { cache: "reload" });
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.addAll(CORE.map(fresh)).then(() =>
+        Promise.all(OPTIONAL.map((url) => cache.add(fresh(url)).catch(() => {})))
+      )
+    )
   );
   self.skipWaiting();
 });
@@ -18,21 +27,19 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
-      )
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;   // let the browser handle anything that isn't a plain read
   const isPage = event.request.mode === "navigate" || event.request.destination === "document";
 
   if (isPage) {
-    // Network-first for the app's HTML: always try to get the latest version when
-    // online, so updates show up immediately instead of waiting on cache logic.
-    // Falls back to the cached copy only when offline.
+    // Network-first for the app's HTML so updates show up immediately; the cached copy is
+    // only used offline (falling back to index.html if this exact URL was never cached).
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -42,7 +49,7 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(() => caches.match(event.request))
+        .catch(() => caches.match(event.request).then((r) => r || caches.match("./index.html")))
     );
     return;
   }
@@ -51,24 +58,33 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
-      return fetch(event.request)
-        .then((response) => {
-          if (response && response.status === 200 && event.request.method === "GET") {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          }
-          return response;
-        })
-        .catch(() => cached);
+      return fetch(event.request).then((response) => {
+        if (response && response.status === 200) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
+        return response;
+      });
     })
   );
 });
 
-// Allow the page to trigger a local notification even when it's the active tab,
-// and lets us show notifications from a periodic background check when supported.
+// The page asks the service worker to show reminder notifications (required on Android).
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SHOW_NOTIFICATION") {
     const { title, options } = event.data;
-    self.registration.showNotification(title, options);
+    // waitUntil keeps the worker alive until the notification is actually shown.
+    event.waitUntil(self.registration.showNotification(title, options));
   }
+});
+
+// Tapping a reminder opens the app (or brings it to the front if it's already open).
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      for (const w of windows) { if ("focus" in w) return w.focus(); }
+      return self.clients.openWindow("./");
+    })
+  );
 });

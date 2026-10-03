@@ -8,6 +8,7 @@
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="icons/icon-192.png" />
 <link rel="apple-touch-icon" href="icons/icon-180-maskable.png" />
+<meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <style>
@@ -47,9 +48,9 @@
     cursor: pointer; color: inherit;
   }
   header.topbar .brand:active { background: rgba(255,255,255,0.08); }
-  header.topbar .brand svg { width: 26px; height: 26px; flex-shrink: 0; }
-  header.topbar .brand h1 { color: var(--cream); }
-  header.topbar h1 { font-size: 16px; margin: 0; font-weight: 700; letter-spacing: 0.2px; opacity: 0.9; }
+  header.topbar .brand-icon { width: 34px; flex-shrink: 0; color: var(--amber); display: flex; }
+  header.topbar .brand-icon svg { width: 100%; height: auto; display: block; }
+  header.topbar .brand-title { color: var(--cream); font-size: 16px; font-weight: 700; letter-spacing: 0.2px; opacity: 0.9; }
   header.topbar button.icon-btn {
     background: rgba(255,255,255,0.08); border: none; color: var(--cream);
     width: 36px; height: 36px; border-radius: 10px; font-size: 18px;
@@ -57,58 +58,15 @@
     flex-shrink: 0;
   }
 
-  /* Drawer */
-  .drawer-overlay {
-    position: fixed; inset: 0; background: rgba(15,37,71,0.45);
-    z-index: 60; display: none;
-  }
-  .drawer-overlay.open { display: block; }
-  .drawer {
-    position: fixed; top: 0; left: 0; bottom: 0; width: min(80vw, 300px);
-    background: var(--navy); display: flex; flex-direction: column;
-    padding: max(18px, env(safe-area-inset-top)) 12px 14px 14px;
-    transform: translateX(-100%); transition: transform 0.25s ease;
-  }
-  .drawer-overlay.open .drawer { transform: translateX(0); }
-  .drawer-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding: 0 4px; }
-  .drawer-head h2 { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.6px; color: rgba(247,245,240,0.55); margin: 0; }
-  .drawer-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; padding-right: 2px; }
-  .drawer-item {
-    display: flex; align-items: center; gap: 11px; padding: 10px 8px; border-radius: 12px;
-    cursor: pointer; user-select: none; -webkit-user-select: none; transition: box-shadow 0.15s, transform 0.15s;
-  }
-  .drawer-item.active { background: rgba(247,245,240,0.12); }
-  .drawer-item.dragging {
-    background: rgba(247,245,240,0.16); box-shadow: 0 10px 24px rgba(0,0,0,0.35);
-    transform: scale(1.02); position: relative; z-index: 20;
-  }
-  .drawer-item .avatar {
-    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 13px; color: var(--navy);
-  }
-  .drawer-item .name {
-    flex: 1; min-width: 0; font-size: 14.5px; font-weight: 600; color: var(--cream);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .drawer-item .edit-btn {
-    background: none; border: none; color: rgba(247,245,240,0.5); font-size: 15px;
-    cursor: pointer; padding: 6px; flex-shrink: 0;
-  }
   .grip-icon { flex-shrink: 0; display: flex; opacity: 0.4; touch-action: none; }
-  .drawer-item .grip-icon { color: rgba(247,245,240,0.6); }
-  .drawer-add {
-    margin-top: 10px; background: rgba(247,245,240,0.08);
-    border: 1px dashed rgba(247,245,240,0.35); color: var(--cream);
-    border-radius: 12px; padding: 12px; font-weight: 700; font-size: 14px; cursor: pointer;
-  }
 
   .vehicle-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-  .vehicle-header .avatar {
-    width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
+  .vtype-icon {
+    width: 58px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    background: var(--navy); color: var(--amber);
     display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 16px; color: var(--navy);
   }
+  .vtype-icon svg { width: 76%; height: auto; display: block; }
   .vehicle-header .vh-name { font-size: 20px; font-weight: 800; color: var(--navy); line-height: 1.15; }
   .vehicle-header .vh-sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
   .vehicle-header button.rename-btn {
@@ -134,8 +92,11 @@
   .empty-state {
     text-align: center; padding: 60px 24px; color: var(--ink-soft);
   }
-  .empty-state .empty-icon { margin-bottom: 14px; display: flex; justify-content: center; }
-  .empty-state .empty-icon svg { width: 64px; height: 64px; }
+  .empty-state .empty-icon {
+    width: 88px; height: 66px; margin: 0 auto 14px; border-radius: 18px;
+    background: var(--navy); color: var(--amber); display: flex; align-items: center; justify-content: center;
+  }
+  .empty-state .empty-icon svg { width: 76%; height: auto; display: block; }
   .empty-state .empty-title { font-size: 18px; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
   .empty-state .empty-copy { font-size: 13.5px; line-height: 1.5; max-width: 300px; margin: 0 auto; }
   .empty-state button {
@@ -143,7 +104,6 @@
     padding: 12px 22px; border-radius: 10px; font-weight: 700; font-size: 14.5px; cursor: pointer;
   }
 
-  .picker-title { font-size: 13px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink-soft); margin-bottom: 12px; }
   .picker-list { display: flex; flex-direction: column; gap: 10px; }
   .picker-card {
     background: var(--paper); border: 1px solid var(--border); border-radius: var(--radius);
@@ -154,7 +114,6 @@
     box-shadow: 0 12px 28px rgba(15,37,71,0.28); transform: scale(1.02);
     position: relative; z-index: 20; border-color: var(--amber);
   }
-  .picker-card .avatar { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px; color: var(--navy); }
   .picker-card-info { min-width: 0; flex: 1; }
   .picker-card-name { font-weight: 700; font-size: 16px; color: var(--ink); }
   .picker-card-sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
@@ -162,7 +121,7 @@
   .picker-add {
     margin-top: 14px; width: 100%; background: var(--paper);
     border: 1px dashed var(--border); color: var(--navy);
-    border-radius: var(--radius); padding: 14px; font-weight: 700; font-size: 14.5px; cursor: pointer;
+    border-radius: var(--radius); padding: 10px 14px; font-weight: 700; font-size: 26px; line-height: 1; cursor: pointer;
   }
 
   .category-pick-list { display: flex; flex-direction: column; gap: 8px; }
@@ -191,14 +150,18 @@
   .section-head-title .cat-icon svg { width: 16px; height: 16px; }
   .section-head h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink-soft); margin: 0; }
   .section-head button {
-    background: none; border: none; color: var(--navy); font-weight: 700; font-size: 13px; cursor: pointer;
-    padding: 4px 8px;
+    background: none; border: none; color: var(--navy); font-weight: 700; font-size: 24px; line-height: 1;
+    cursor: pointer; width: 36px; height: 32px; margin-right: -8px;
+    display: flex; align-items: center; justify-content: center;
   }
 
   .item-card {
     background: var(--paper); border: 1px solid var(--border); border-radius: var(--radius);
     padding: 13px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px;
+    cursor: pointer;
   }
+  .item-card:active { background: var(--cream); }
+  .item-card.is-done { opacity: 0.55; }   /* completed events: grayed out */
   .item-badge {
     width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
   }
@@ -210,13 +173,6 @@
   .item-main { flex: 1; min-width: 0; }
   .item-main .label { font-weight: 600; font-size: 15px; }
   .item-main .sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
-  .item-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-  .item-actions button {
-    border: none; background: var(--cream); width: 30px; height: 30px; border-radius: 8px;
-    cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;
-    color: var(--ink-soft);
-  }
-  .item-actions button.done-btn { background: rgba(47,158,91,0.12); color: var(--green); font-weight: 700; }
   .empty-hint { font-size: 13px; color: var(--ink-soft); padding: 10px 2px; }
 
   .fab {
@@ -248,7 +204,10 @@
     font-family: inherit;
   }
   .field textarea { resize: vertical; min-height: 60px; }
+  .btn-done { background: rgba(47,158,91,0.12); color: var(--green); }
+  .btn-done[aria-pressed="true"] { background: var(--green); color: #fff; }
   .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .modal-actions .btn { padding-left: 6px; padding-right: 6px; white-space: nowrap; }
   .btn {
     flex: 1; padding: 12px; border-radius: 10px; border: none; font-size: 15px; font-weight: 700; cursor: pointer;
   }
@@ -256,41 +215,16 @@
   .btn-secondary { background: var(--cream); color: var(--ink); border: 1px solid var(--border); }
   .btn-danger { background: #FBEAEA; color: var(--red); }
 
-  .cal-links { display: flex; gap: 8px; margin-top: 10px; }
-  .cal-links a {
-    font-size: 12px; color: var(--navy); text-decoration: none; font-weight: 600;
-    background: var(--cream); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
+  .type-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .type-opt {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 9px 1px 7px; border-radius: 10px; border: 1.5px solid var(--border);
+    background: var(--cream); color: var(--ink-soft); cursor: pointer;
+    font-family: inherit; font-size: 10px; font-weight: 600; white-space: nowrap; min-width: 0;
   }
-
-  .photo-row { display: flex; align-items: center; gap: 12px; }
-  .photo-preview {
-    width: 54px; height: 54px; border-radius: 50%; flex-shrink: 0;
-    background: var(--cream); border: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: center;
-    overflow: hidden; font-size: 18px; color: var(--ink-soft);
-  }
-  .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
-  .photo-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
-
-  .attachment-box {
-    display: flex; align-items: center; gap: 10px;
-    background: var(--cream); border: 1px solid var(--border); border-radius: 10px;
-    padding: 12px; font-size: 13.5px; color: var(--ink-soft);
-  }
-  .attachment-box .attachment-icon { width: 18px; height: 18px; flex-shrink: 0; color: var(--ink-soft); }
-  .attachment-box span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #itemAttachmentView {
-    font-size: 12px; color: var(--navy); text-decoration: none; font-weight: 600;
-    background: var(--cream); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
-    align-self: center;
-  }
-
-  .drawer-item .avatar, .vehicle-header .avatar, .settings-row .avatar {
-    overflow: hidden;
-  }
-  .avatar img {
-    width: 100%; height: 100%; object-fit: cover;
-  }
+  .type-opt svg { width: 100%; max-width: 40px; height: auto; display: block; }
+  .type-opt[aria-pressed="true"] { background: var(--navy); border-color: var(--amber); color: var(--amber); }
+  .type-opt[aria-pressed="true"] span { color: var(--cream); }
 
   .toast {
     position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
@@ -301,11 +235,10 @@
 
   .settings-row {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 0; border-bottom: 1px solid var(--border);
+    padding: 12px 0;
   }
-  .settings-row:last-child { border-bottom: none; }
+  .settings-row + .settings-row { border-top: 1px solid var(--border); }
   .settings-row div.label-block .t { font-weight: 600; font-size: 14.5px; }
-  .settings-row div.label-block .d { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
   .switch { position: relative; width: 44px; height: 26px; flex-shrink: 0; }
   .switch input { opacity: 0; width: 0; height: 0; }
   .slider { position: absolute; inset: 0; background: #D8D3C8; border-radius: 999px; cursor: pointer; transition: 0.2s; }
@@ -317,33 +250,21 @@
 <body>
 <div id="app">
   <header class="topbar">
-    <button class="icon-btn" id="menuBtn" aria-label="Vehicles">&#9776;</button>
     <button class="brand" id="brandHomeBtn" aria-label="Go to home screen">
-      <svg viewBox="0 0 24 24" fill="none"><rect x="2.7" y="12" width="18.6" height="4.8" rx="2.1" fill="#E8A33D"/><rect x="5.9" y="7.5" width="12.3" height="5.3" rx="2.6" fill="#E8A33D"/><circle cx="7.2" cy="16.8" r="2.4" fill="#0F2547" stroke="#F7F5F0" stroke-width="0.6"/><circle cx="16.8" cy="16.8" r="2.4" fill="#0F2547" stroke="#F7F5F0" stroke-width="0.6"/></svg>
-      <h1>My Fleet</h1>
+      <span class="brand-icon" id="brandIcon"></span>
+      <span class="brand-title">My Fleet</span>
     </button>
     <button class="icon-btn" id="settingsBtn" aria-label="Settings">&#9881;</button>
   </header>
 
   <main id="main"></main>
 
-  <button class="fab" id="fabAdd" aria-label="Add item">+</button>
-</div>
-
-<div class="drawer-overlay" id="drawerOverlay">
-  <div class="drawer">
-    <div class="drawer-head">
-      <h2>Vehicles</h2>
-      <button class="icon-btn" id="drawerCloseBtn" aria-label="Close">&#10005;</button>
-    </div>
-    <div class="drawer-list" id="drawerList"></div>
-    <button class="drawer-add" id="drawerAddBtn">+ Add vehicle</button>
-  </div>
+  <button class="fab" id="fabAdd" aria-label="Add event">+</button>
 </div>
 
 <div class="overlay" id="categoryPickerOverlay">
   <div class="modal">
-    <h3>Add item to&hellip;</h3>
+    <h3>Add event to&hellip;</h3>
     <div class="category-pick-list" id="categoryPickList"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" id="categoryPickCancel">Cancel</button>
@@ -353,54 +274,33 @@
 
 <div class="overlay" id="itemOverlay">
   <div class="modal">
-    <h3 id="itemModalTitle">Add item</h3>
+    <h3 id="itemModalTitle">Add event</h3>
     <div class="field">
       <label for="itemLabel">Name</label>
-      <input id="itemLabel" placeholder="e.g. Oil change" />
+      <input id="itemLabel" />
     </div>
     <div class="field">
-      <label for="itemLast">Last done (optional)</label>
+      <label for="itemLast">Last done</label>
       <input id="itemLast" type="date" />
     </div>
     <div class="field">
-      <label for="itemDue">Due date</label>
+      <label for="itemDue">Next due</label>
       <input id="itemDue" type="date" />
     </div>
     <div class="field">
-      <label for="itemRepeat">Repeats every (optional)</label>
-      <select id="itemRepeat">
-        <option value="">Doesn't repeat</option>
-        <option value="1">1 month</option>
-        <option value="3">3 months</option>
-        <option value="6">6 months</option>
-        <option value="12">12 months</option>
-        <option value="24">24 months</option>
-      </select>
+      <label for="itemNotes">Notes</label>
+      <input id="itemNotes" />
     </div>
-    <div class="field">
-      <label for="itemNotes">Notes (optional)</label>
-      <input id="itemNotes" placeholder="e.g. Service center, policy number" />
+    <div class="modal-actions" id="itemStateRow" style="display:none;">
+      <button class="btn btn-done" id="itemDoneBtn" aria-pressed="false">Done</button>
+      <button class="btn btn-secondary" id="itemRenewBtn">&#8635; Renew</button>
     </div>
-    <div class="field">
-      <label>Attachment (optional)</label>
-      <div class="attachment-box">
-        <svg class="attachment-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-        <span id="itemAttachmentInfo">No file attached</span>
-      </div>
-      <div class="photo-buttons" style="margin-top:8px;">
-        <button type="button" class="btn btn-secondary" id="itemAttachmentPick" style="flex:none; padding:9px 14px;">Upload file</button>
-        <button type="button" class="btn btn-secondary" id="itemAttachmentRemove" style="flex:none; padding:9px 14px; display:none;">Remove</button>
-        <a id="itemAttachmentView" href="#" target="_blank" style="display:none;">View</a>
-      </div>
-      <input type="file" id="itemAttachmentInput" accept="application/pdf,image/*" style="display:none;" />
-    </div>
-    <div class="cal-links" id="itemCalLinks"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" id="itemCancel">Cancel</button>
       <button class="btn btn-primary" id="itemSave">Save</button>
     </div>
     <div class="modal-actions" id="itemDeleteRow" style="display:none;">
-      <button class="btn btn-danger" id="itemDelete">Delete item</button>
+      <button class="btn btn-danger" id="itemDelete">Delete event</button>
     </div>
   </div>
 </div>
@@ -409,31 +309,24 @@
   <div class="modal">
     <h3 id="vehicleModalTitle">Add vehicle</h3>
     <div class="field">
+      <label>Vehicle type</label>
+      <div class="type-grid" id="vehicleTypeGrid" role="group" aria-label="Vehicle type"></div>
+    </div>
+    <div class="field">
       <label for="vehicleName">Vehicle name</label>
-      <input id="vehicleName" placeholder="e.g. Toyota Yaris - CB 1234 AB" />
+      <input id="vehicleName" />
     </div>
     <div class="field">
       <label for="vehicleReg">Registration number</label>
-      <input id="vehicleReg" placeholder="e.g. CB 1234 AB" />
+      <input id="vehicleReg" />
     </div>
     <div class="field">
       <label for="vehicleVin">VIN</label>
-      <input id="vehicleVin" placeholder="e.g. WVWZZZ1KZAW123456" style="text-transform:uppercase;" />
+      <input id="vehicleVin" style="text-transform:uppercase;" />
     </div>
     <div class="field">
       <label for="vehicleNote">Note (optional)</label>
-      <textarea id="vehicleNote" rows="3" placeholder="Anything else worth remembering about this vehicle"></textarea>
-    </div>
-    <div class="field">
-      <label>Vehicle photo (optional)</label>
-      <div class="photo-row">
-        <div class="photo-preview" id="vehiclePhotoPreview"></div>
-        <div class="photo-buttons">
-          <button type="button" class="btn btn-secondary" id="vehiclePhotoPick" style="flex:none; padding:9px 14px;">Upload PNG</button>
-          <button type="button" class="btn btn-secondary" id="vehiclePhotoRemove" style="flex:none; padding:9px 14px; display:none;">Remove</button>
-        </div>
-      </div>
-      <input type="file" id="vehiclePhotoInput" accept="image/png, image/jpeg" style="display:none;" />
+      <textarea id="vehicleNote" rows="3"></textarea>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" id="vehicleCancel">Cancel</button>
@@ -451,54 +344,48 @@
     <div class="settings-row">
       <div class="label-block">
         <div class="t">Reminder notifications</div>
-        <div class="d">Notify me when items are due soon</div>
       </div>
       <label class="switch">
-        <input type="checkbox" id="notifToggle" />
+        <input type="checkbox" id="notifToggle" aria-label="Reminder notifications" />
         <span class="slider"></span>
       </label>
     </div>
     <div class="settings-row">
       <div class="label-block">
-        <div class="t">Remind me before</div>
-        <div class="d">Days ahead of the due date</div>
+        <div class="t">Remind me</div>
       </div>
-      <select id="leadDays" style="width:90px; padding:8px; border-radius:8px; border:1px solid var(--border); background: var(--cream);">
-        <option value="7">7 days</option>
-        <option value="14">14 days</option>
-        <option value="30" selected>30 days</option>
+      <select id="leadDays" aria-label="Remind me" style="width:150px; padding:8px; border-radius:8px; border:1px solid var(--border); background: var(--cream);">
+        <option value="7">7 days before</option>
+        <option value="14">14 days before</option>
+        <option value="30" selected>30 days before</option>
       </select>
     </div>
     <div class="settings-row">
       <div class="label-block">
-        <div class="t">Auto-backup to Downloads</div>
-        <div class="d">Quietly save a backup file once a day when you use the app</div>
+        <div class="t">Auto-backup</div>
       </div>
       <label class="switch">
-        <input type="checkbox" id="autoBackupToggle" />
+        <input type="checkbox" id="autoBackupToggle" aria-label="Auto-backup" />
         <span class="slider"></span>
       </label>
     </div>
     <div class="settings-row">
       <div class="label-block">
         <div class="t">Export backup</div>
-        <div class="d">Save all your data to a file</div>
       </div>
       <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="exportBtn">Export</button>
     </div>
     <div class="settings-row">
       <div class="label-block">
         <div class="t">Import backup</div>
-        <div class="d">Restore data from a file</div>
       </div>
       <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="importBtn">Import</button>
     </div>
     <div class="settings-row">
       <div class="label-block">
-        <div class="t">Export all to calendar</div>
-        <div class="d">Download a .ics file for all due dates</div>
+        <div class="t">Export to calendar</div>
       </div>
-      <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="icsAllBtn">.ics</button>
+      <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="icsAllBtn">Export</button>
     </div>
     <input type="file" id="importFile" accept="application/json" style="display:none;" />
     <div class="modal-actions">
@@ -526,123 +413,76 @@ const CATEGORY_ICONS = {
   inspection: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 3.5h6v2H9z" fill="currentColor" stroke="none"/><path d="M9 12l2 2 4-4"/></svg>'
 };
 
+// Every event repeats yearly: Next due is one year after Last done, and Renew moves on one year.
+const REPEAT_YEARLY = 12;
+
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
-function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch (e) {}
-  return {
-    vehicles: [
-      { id: uid(), name: "Vehicle 1", items: { maintenance: [], insurance: [], inspection: [] } }
-    ]
-  };
+// Accepts saved data or a backup file and returns a clean { vehicles } object, or null if it
+// isn't My Fleet data at all. Fills in anything missing (ids, event lists) so a partial or
+// hand-edited file can't crash the app, and drops broken entries.
+function normalizeData(raw) {
+  if (!raw || !Array.isArray(raw.vehicles)) return null;
+  const str = v => (v === undefined || v === null) ? "" : String(v);
+  const date = v => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v : null;
+  const seen = new Set();
+  const freshId = id => { let x = (typeof id === "string" && id) ? id : uid(); while (seen.has(x)) x = uid(); seen.add(x); return x; };
+  const vehicles = raw.vehicles.filter(v => v && typeof v === "object").map(v => {
+    const items = {};
+    CATEGORIES.forEach(c => {
+      const list = v.items && Array.isArray(v.items[c.key]) ? v.items[c.key] : [];
+      // attachment belonged to the removed photo/document feature: drop it
+      // repeatMonths belonged to the per-event repeat setting (now: every event is yearly)
+      items[c.key] = list.filter(i => i && typeof i === "object").map(({ attachment, repeatMonths, ...i }) => ({
+        ...i, id: freshId(i.id), label: str(i.label) || "Untitled", dueDate: date(i.dueDate), lastDate: date(i.lastDate),
+        notes: str(i.notes), done: i.done === true
+      }));
+    });
+    const { photo, ...rest } = v;   // vehicle photos were removed too
+    return { ...rest, id: freshId(v.id), name: str(v.name) || "Unnamed vehicle",
+      registration: str(v.registration), vin: str(v.vin), note: str(v.note), items };
+  });
+  return { vehicles };
 }
-function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data)); }
 
+let dataLoadProblem = false;
+let hadLegacyFields = false;   // saved data still mentions removed photos/documents
+function loadData() {
+  let raw = null;
+  try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+  if (raw) {
+    try {
+      const data = normalizeData(JSON.parse(raw));
+      if (data) { hadLegacyFields = /"(photo|attachment)"\s*:/.test(raw); return data; }
+    } catch (e) {}
+    // Saved data exists but can't be read: keep one copy so the next save doesn't destroy it.
+    try { if (!localStorage.getItem(STORAGE_KEY + "_unreadable")) localStorage.setItem(STORAGE_KEY + "_unreadable", raw); } catch (e) {}
+    dataLoadProblem = true;
+  }
+  return { vehicles: [] };
+}
+// Every saved change also writes a backup file (see scheduleAutoBackup). Pass false for
+// internal writes that aren't a user change, such as importing a backup.
+function saveData(backup = true) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
+  } catch (e) {
+    showToast("Couldn't save. Phone storage may be full");
+    return false;
+  }
+  if (backup) scheduleAutoBackup();
+  return true;
+}
+
+const DEFAULT_SETTINGS = { notifications: false, leadDays: 30, lastCheck: null, autoBackup: true };
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) { const st = JSON.parse(raw); if (st && typeof st === "object") return { ...DEFAULT_SETTINGS, ...st }; }
   } catch (e) {}
-  return { notifications: false, leadDays: 30, lastCheck: null, autoBackup: false, lastAutoBackup: null };
+  return { ...DEFAULT_SETTINGS };
 }
-function saveSettings() { localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings)); }
-
-/* ---------------- File store (IndexedDB) ----------------
-   Vehicle photos and item attachments live here as real Blobs, not as
-   base64 text in localStorage — localStorage has a tiny (5-10MB) shared
-   quota and base64 inflates file size by ~33%, so a handful of documents
-   per vehicle would blow past it fast. IndexedDB comfortably holds
-   hundreds of MB. localStorage still holds the actual vehicle/item data
-   (dates, names, notes) — just file bytes moved out. */
-const FILES_DB_NAME = "fleetlog_files";
-const FILES_STORE = "files";
-let filesDbPromise = null;
-
-function openFilesDB() {
-  if (filesDbPromise) return filesDbPromise;
-  filesDbPromise = new Promise((resolve, reject) => {
-    if (!("indexedDB" in window)) { reject(new Error("IndexedDB unavailable")); return; }
-    const req = indexedDB.open(FILES_DB_NAME, 1);
-    req.onupgradeneeded = () => { req.result.createObjectStore(FILES_STORE); };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-  return filesDbPromise;
-}
-async function fileStorePut(id, blob) {
-  const db = await openFilesDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(FILES_STORE, "readwrite");
-    tx.objectStore(FILES_STORE).put(blob, id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-async function fileStoreGet(id) {
-  const db = await openFilesDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(FILES_STORE, "readonly");
-    const req = tx.objectStore(FILES_STORE).get(id);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => reject(req.error);
-  });
-}
-async function fileStoreDelete(id) {
-  if (!id) return;
-  try {
-    const db = await openFilesDB();
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction(FILES_STORE, "readwrite");
-      tx.objectStore(FILES_STORE).delete(id);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  } catch (e) {}
-}
-function dataUrlToBlob(dataUrl) {
-  const [meta, b64] = dataUrl.split(",");
-  const type = (meta.match(/data:(.*);base64/) || [,"application/octet-stream"])[1];
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new Blob([bytes], { type });
-}
-function blobToDataUrl(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-// One-time migration: any vehicle photo or item attachment still holding an
-// inline base64 string (from before this change) gets moved into IndexedDB.
-async function migrateInlineFilesToStore() {
-  let touched = false;
-  for (const vehicle of state.data.vehicles) {
-    if (vehicle.photo && typeof vehicle.photo === "string" && vehicle.photo.startsWith("data:")) {
-      const id = "photo_" + uid();
-      await fileStorePut(id, dataUrlToBlob(vehicle.photo));
-      vehicle.photo = id;
-      touched = true;
-    }
-    for (const cat of CATEGORIES) {
-      for (const item of (vehicle.items[cat.key] || [])) {
-        if (item.attachment && item.attachment.dataUrl) {
-          const id = "att_" + uid();
-          await fileStorePut(id, dataUrlToBlob(item.attachment.dataUrl));
-          item.attachment = { id, name: item.attachment.name, type: item.attachment.type };
-          touched = true;
-        }
-      }
-    }
-  }
-  if (touched) saveData();
-}
+function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings)); } catch (e) {} }
 
 const state = {
   data: loadData(),
@@ -650,9 +490,30 @@ const state = {
   activeVehicleId: null,
   editing: null // { vehicleId, category, itemId | null }
 };
-// Always start on the vehicle picker rather than auto-opening a vehicle.
 
-/* ---------------- Date helpers ---------------- */
+/* ---------------- Date helpers ----------------
+   All calendar dates are the phone's LOCAL date. (toISOString() is UTC, which in Bulgaria
+   is a day behind between midnight and 2-3am and shifts all-day calendar end dates.) */
+function localISO(d = new Date()) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function nextDayISO(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + 1);
+  return localISO(d);
+}
+// Adds whole months, clamping to the month's last day (31 Jan + 1 month = 28/29 Feb, not 3 Mar).
+function addMonthsISO(dateStr, months) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const t = new Date(y, m - 1 + months, 1);
+  t.setDate(Math.min(d, new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate()));
+  return localISO(t);
+}
+function formatDate(dateStr) {
+  return new Date(dateStr + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+// A completed event (Done + Save): grayed out, never overdue, no reminders.
+function isDone(item) { return item.done === true; }
 function daysUntil(dateStr) {
   if (!dateStr) return null;
   const today = new Date(); today.setHours(0,0,0,0);
@@ -665,15 +526,9 @@ function statusClass(days) {
   if (days <= 30) return "badge-amber";
   return "badge-green";
 }
-function humanLast(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
-}
 function humanDue(days, dateStr) {
-  const d = new Date(dateStr + "T00:00:00");
-  const formatted = d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
   if (days === null) return "No date set";
+  const formatted = formatDate(dateStr);
   if (days < 0) return `Overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} · ${formatted}`;
   if (days === 0) return `Due today · ${formatted}`;
   return `Due in ${days} day${days === 1 ? "" : "s"} · ${formatted}`;
@@ -682,41 +537,102 @@ function humanDue(days, dateStr) {
 /* ---------------- Rendering ---------------- */
 const mainEl = document.getElementById("main");
 const toastEl = document.getElementById("toast");
-const drawerOverlay = document.getElementById("drawerOverlay");
-const drawerList = document.getElementById("drawerList");
 
+let toastTimer = null;
 function showToast(msg) {
   toastEl.textContent = msg;
   toastEl.classList.add("show");
-  setTimeout(() => toastEl.classList.remove("show"), 2200);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2200);
 }
 
-const AVATAR_COLORS = ["#E8A33D", "#2F9E5B", "#D14343", "#7FA9E0"];
-function avatarColor(index) { return AVATAR_COLORS[index % AVATAR_COLORS.length]; }
-function initials(name) {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "?";
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[1][0]).toUpperCase();
+/* ---------------- Vehicle type icons ----------------
+   Predesigned side-profile silhouettes (viewBox 0 0 64 40, drawn in currentColor).
+   Vehicles without a saved type fall back to the sedan. */
+// Inner SVG markup for each vehicle type. viewBox is 0 0 64 40; everything uses currentColor.
+const iconRing = (cx, cy, r, hub) => `M${cx - r} ${cy} a${r} ${r} 0 1 0 ${2 * r} 0 a${r} ${r} 0 1 0 ${-2 * r} 0 Z M${cx - hub} ${cy} a${hub} ${hub} 0 1 0 ${2 * hub} 0 a${hub} ${hub} 0 1 0 ${-2 * hub} 0 Z`;
+
+const sedan = `
+<path fill-rule="evenodd" d="M3 29 L3 22 Q3 19.4 5.6 18.9 L16 17.2 L22.2 9.4 Q23.3 8 25 8 L38.5 8 Q40.2 8 41.4 9.2 L49.6 17.6 L58.4 19.6 Q61.5 20.4 61.5 24 L61.5 29 L57 29 A8 8 0 0 0 41 29 L23 29 A8 8 0 0 0 7 29 Z
+M19.4 16.4 L24 10.6 Q24.5 10 25.3 10 L30.2 10 L30.2 16.4 Z
+M32.8 10 L38 10 Q38.8 10 39.4 10.6 L45.2 16.4 L32.8 16.4 Z"/>
+<path fill-rule="evenodd" d="${iconRing(15, 29, 6, 2.2)}"/>
+<path fill-rule="evenodd" d="${iconRing(49, 29, 6, 2.2)}"/>`;
+
+const suv = `
+<path fill-rule="evenodd" d="M3 28.5 L3 18 Q3 15.8 5 15.4 L9.5 14.6 L11.4 8.4 Q12 6.5 14 6.5 L43 6.5 Q45 6.5 46.2 8 L52 15 L58.6 16.8 Q62 17.8 62 21.5 L62 28.5 L59 28.5 A9 9 0 0 0 41 28.5 L24 28.5 A9 9 0 0 0 6 28.5 Z
+M12.8 14 L14.2 9 L26 9 L26 14 Z
+M28.6 9 L42 9 Q43 9 43.6 9.8 L47.8 14 L28.6 14 Z"/>
+<path fill-rule="evenodd" d="${iconRing(15, 28.5, 7, 2.4)}"/>
+<path fill-rule="evenodd" d="${iconRing(50, 28.5, 7, 2.4)}"/>`;
+
+const motorbike = `
+<g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="11" cy="27" r="7.7"/>
+  <circle cx="53" cy="27" r="7.7"/>
+  <path d="M45.4 13 L53 27"/>
+  <path d="M44.8 11.8 L41 9.6"/>
+  <path d="M11 27 L27 27.6"/>
+</g>
+<circle cx="11" cy="27" r="1.8" fill="currentColor"/>
+<circle cx="53" cy="27" r="1.8" fill="currentColor"/>
+<rect x="25" y="20.4" width="15" height="10.4" rx="3" fill="currentColor"/>
+<path fill="currentColor" d="M6.8 18.6 Q6.8 16.8 8.8 16.6 L24.2 16 Q26.4 15.8 27.4 13.8 Q28.8 11.2 32 11.2 L38.2 11.6 Q40.8 12 41.2 14.4 L41.4 19 L37.6 20 L24 20.4 L9.6 20.4 Q6.8 20.4 6.8 18.6 Z"/>
+<circle cx="46.6" cy="16" r="3.2" fill="currentColor"/>`;
+
+const scooter = `
+<path fill-rule="evenodd" d="M6.5 29.5 Q3.8 24.5 5.6 19 Q7.4 14.4 13 14 L27 14 C29.4 17.6 30.4 21.4 31 24.5 L31 29.5 L22.5 29.5 A7.5 7.5 0 0 0 7.5 29.5 Z"/>
+<path fill="currentColor" d="M9.2 14.6 Q9.2 10.8 13 10.6 L25.2 10.6 Q28.4 10.8 28.8 13.6 L28.8 14.6 Z"/>
+<rect x="27.5" y="24" width="16" height="4.6" rx="2.2" fill="currentColor"/>
+<path fill="currentColor" d="M39.8 28.6 L39.8 25 Q41.4 17 43.2 10.8 Q43.8 8.8 45.8 9.2 L47.4 9.7 Q48.4 10.3 48 11.8 Q46.2 19 45.4 25 L45.4 28.6 Z"/>
+<circle cx="49.6" cy="12" r="3" fill="currentColor"/>
+<path fill="currentColor" d="M41.4 8 L49.6 8 Q50.6 8 50.6 9 Q50.6 10 49.6 10 L41.4 10 Q40.4 10 40.4 9 Q40.4 8 41.4 8 Z"/>
+<path d="M47.4 15 L51 29.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/>
+<path fill="currentColor" d="M45.6 22 Q50.6 18.4 56.6 23 L57 25.2 Q51.6 21.8 46.6 24.8 Z"/>
+<path fill-rule="evenodd" d="${iconRing(15, 29.5, 5.6, 2)}"/>
+<path fill-rule="evenodd" d="${iconRing(51, 29.5, 5.6, 2)}"/>`;
+
+// ATV: knobby fat tyres, flat fenders with cargo racks front and rear, low body, seat, upright bars.
+const iconKnobs = (cx, cy, r, n, kr) => Array.from({ length: n }, (_, k) => {
+  const a = (k / n) * 2 * Math.PI;
+  return `<circle cx="${(cx + r * Math.cos(a)).toFixed(2)}" cy="${(cy + r * Math.sin(a)).toFixed(2)}" r="${kr}"/>`;
+}).join("");
+const atvWheel = (cx, cy) => `<path fill-rule="evenodd" d="${iconRing(cx, cy, 7.9, 3.2)}"/><circle cx="${cx}" cy="${cy}" r="1.5"/>${iconKnobs(cx, cy, 7.95, 16, 0.85)}`;
+const atv = `
+${atvWheel(13, 28.6)}
+${atvWheel(51, 28.6)}
+<path d="M2.6 18.6 Q2.6 15.2 6 15.2 L22.5 15.2 L24 18.6 Z"/>
+<path d="M40 18.6 L41.5 15.2 L58.4 15.2 Q61.8 15.2 61.8 18.6 Z"/>
+<path d="M21.5 15.2 L42.5 15.2 L44.6 23.6 Q44.6 26.4 41.8 26.4 L24.4 26.4 Q21.6 26.4 21.4 23.6 Z"/>
+<rect x="17.8" y="10.4" width="17.4" height="5.4" rx="2.7"/>
+<path d="M35 15.6 L36.4 11.6 Q37 10.4 38.4 10.4 L42.2 10.4 L43.6 15.6 Z"/>
+<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+  <path d="M4 11.2 L16 11.2 M5.6 11.2 L5.6 15.2 M10.4 11.2 L10.4 15.2 M15 11.2 L15 15.2"/>
+  <path d="M46.6 11.2 L60.4 11.2 M48 11.2 L48 15.2 M53.4 11.2 L53.4 15.2 M58.8 11.2 L58.8 15.2"/>
+</g>
+<g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round">
+  <path d="M43.4 13.8 L41.6 6.6"/>
+  <path d="M38.8 6.4 L44.2 6.4"/>
+</g>`;
+
+
+const VEHICLE_TYPES = [
+  { key: "scooter", label: "Scooter", art: scooter },
+  { key: "motorbike", label: "Motorbike", art: motorbike },
+  { key: "atv", label: "ATV", art: atv },
+  { key: "sedan", label: "Sedan", art: sedan },
+  { key: "suv", label: "SUV", art: suv }
+];
+const DEFAULT_VEHICLE_TYPE = "sedan";
+function vehicleTypeOf(vehicle) {
+  return VEHICLE_TYPES.some(t => t.key === vehicle.type) ? vehicle.type : DEFAULT_VEHICLE_TYPE;
 }
-function applyAvatar(el, vehicle, index) {
-  if (vehicle.photo) {
-    el.style.background = avatarColor(index);
-    el.innerHTML = "";
-    el.textContent = initials(vehicle.name);
-    fileStoreGet(vehicle.photo).then(blob => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      el.style.background = "transparent";
-      el.innerHTML = `<img src="${url}" alt="" />`;
-    }).catch(() => {});
-  } else {
-    el.style.background = avatarColor(index);
-    el.innerHTML = "";
-    el.textContent = initials(vehicle.name);
-  }
+function vehicleIconSvg(typeKey) {
+  const t = VEHICLE_TYPES.find(x => x.key === typeKey) || VEHICLE_TYPES.find(x => x.key === DEFAULT_VEHICLE_TYPE);
+  return `<svg viewBox="0 0 64 40" fill="currentColor" aria-hidden="true" focusable="false">${t.art}</svg>`;
 }
 
+document.getElementById("brandIcon").innerHTML = vehicleIconSvg("sedan");
 document.getElementById("brandHomeBtn").onclick = () => {
   if (state.activeVehicleId) closeNav();
 };
@@ -731,41 +647,70 @@ document.getElementById("brandHomeBtn").onclick = () => {
 let navDepth = 0;
 let exitArmed = false;
 let exitArmTimer = null;
-function pushNav() { navDepth++; history.pushState({ fleetNav: navDepth }, "", location.href); }
+function pushNav() {
+  if (exitArmed) restoreRootSentinel();   // did something else instead of exiting: re-arm the guard first
+  navDepth++;
+  history.pushState({ fleetNav: navDepth }, "", location.href);
+}
+// The bottom-most app history entry. While it exists, a back press on the home page is caught
+// (to show "Press back again to exit"); once it's been popped, the next back press exits.
+function restoreRootSentinel() {
+  exitArmed = false;
+  clearTimeout(exitArmTimer);
+  navDepth++;
+  history.pushState({ fleetNav: navDepth }, "", location.href);
+}
 function replaceNav() { history.replaceState({ fleetNav: navDepth }, "", location.href); }
-function closeNav() { history.back(); }
+// While a close is on its way (history.back() is asynchronous) further taps on Save /
+// Cancel / Delete are ignored, so a quick double-tap can't save twice or close two screens.
+let navClosing = false, navClosingTimer = null, suppressPops = 0;
+function closeNav() {
+  if (navClosing) return;
+  navClosing = true;
+  clearTimeout(navClosingTimer);
+  navClosingTimer = setTimeout(() => { navClosing = false; }, 800);   // safety net
+  history.back();
+}
 window.addEventListener("popstate", () => {
+  navClosing = false;
+  clearTimeout(navClosingTimer);
+  if (suppressPops > 0) { suppressPops--; return; }
   if (navDepth > 0) navDepth--;
   performTopLevelClose();
 });
+// Close everything and return to the home page in one step, keeping the back-gesture
+// history in sync (used after deleting the open vehicle and after importing a backup).
+function goToRoot() {
+  [itemOverlay, vehicleOverlay, categoryPickerOverlay, settingsOverlay].forEach(o => o.classList.remove("open"));
+  state.editing = null;
+  state.activeVehicleId = null;
+  render();
+  const steps = navDepth - 1;            // entries above the root sentinel
+  if (steps > 0) {
+    navDepth = 1;
+    suppressPops++;
+    navClosing = true;
+    clearTimeout(navClosingTimer);
+    navClosingTimer = setTimeout(() => { navClosing = false; }, 800);
+    history.go(-steps);
+  }
+}
 function performTopLevelClose() {
   if (itemOverlay.classList.contains("open")) { itemOverlay.classList.remove("open"); state.editing = null; return; }
   if (vehicleOverlay.classList.contains("open")) { vehicleOverlay.classList.remove("open"); return; }
   if (categoryPickerOverlay.classList.contains("open")) { categoryPickerOverlay.classList.remove("open"); return; }
   if (settingsOverlay.classList.contains("open")) { settingsOverlay.classList.remove("open"); return; }
-  if (drawerOverlay.classList.contains("open")) { drawerOverlay.classList.remove("open"); return; }
   if (state.activeVehicleId) { state.activeVehicleId = null; render(); return; }
-  // Truly at the root screen with nothing left to close in-app — require a second
-  // back press within a couple seconds before actually letting the app exit.
+  // On the home page with nothing open: this press just used up the root sentinel, so the
+  // phone is now on the app's first history entry and the NEXT back press closes the app.
+  // If that second press doesn't come within 2 seconds, put the sentinel back.
   if (!exitArmed) {
     exitArmed = true;
-    pushNav();
     showToast("Press back again to exit");
     clearTimeout(exitArmTimer);
-    exitArmTimer = setTimeout(() => { exitArmed = false; }, 2000);
+    exitArmTimer = setTimeout(() => { if (exitArmed) restoreRootSentinel(); }, 2000);
   }
-  // else: already armed — don't push a new entry, so this back press actually exits.
 }
-
-function openDrawer() { renderDrawer(); drawerOverlay.classList.add("open"); pushNav(); }
-function closeDrawer() { closeNav(); }
-document.getElementById("menuBtn").onclick = openDrawer;
-document.getElementById("drawerCloseBtn").onclick = closeDrawer;
-drawerOverlay.addEventListener("click", (e) => { if (e.target === drawerOverlay) closeDrawer(); });
-document.getElementById("drawerAddBtn").onclick = () => {
-  drawerOverlay.classList.remove("open");
-  openVehicleModal(true);
-};
 
 const GRIP_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><circle cx="8" cy="6" r="1.6"/><circle cx="16" cy="6" r="1.6"/><circle cx="8" cy="12" r="1.6"/><circle cx="16" cy="12" r="1.6"/><circle cx="8" cy="18" r="1.6"/><circle cx="16" cy="18" r="1.6"/></svg>';
 
@@ -779,6 +724,12 @@ function enableDragReorder(el, container, vehicleId, onTap) {
   let hasDragged = false;
   let startX = 0, startY = 0;
   let pointerId = null;
+
+  // Once a drag has started, stop the page from scrolling. (Changing touch-action mid-gesture
+  // has no effect on Android, so without this the browser grabs the finger as a scroll and
+  // cancels the drag.) Also suppress the long-press context menu.
+  el.addEventListener("touchmove", (e) => { if (dragging) e.preventDefault(); }, { passive: false });
+  el.addEventListener("contextmenu", (e) => e.preventDefault());
 
   el.addEventListener("pointerdown", (e) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
@@ -825,10 +776,14 @@ function enableDragReorder(el, container, vehicleId, onTap) {
       el.style.touchAction = "";
       try { el.releasePointerCapture(pointerId); } catch (err) {}
       const newOrderIds = Array.from(container.children).map(c => c.dataset.vehicleId).filter(Boolean);
+      const oldOrder = state.data.vehicles.map(v => v.id).join();
       state.data.vehicles.sort((a, b) => newOrderIds.indexOf(a.id) - newOrderIds.indexOf(b.id));
-      saveData();
       render();
-      showToast("Vehicle order updated");
+      // A press-and-hold that ends where it started isn't a change: no save, no backup file.
+      if (state.data.vehicles.map(v => v.id).join() !== oldOrder) {
+        saveData();
+        showToast("Vehicle order updated");
+      }
     }
   }
   el.addEventListener("pointerup", endDrag);
@@ -839,47 +794,11 @@ function enableDragReorder(el, container, vehicleId, onTap) {
   });
 }
 
-function renderDrawer() {
-  drawerList.innerHTML = "";
-  state.data.vehicles.forEach((v, i) => {
-    const row = document.createElement("div");
-    row.className = "drawer-item" + (v.id === state.activeVehicleId ? " active" : "");
-    const avatar = document.createElement("div");
-    avatar.className = "avatar";
-    applyAvatar(avatar, v, i);
-    const name = document.createElement("div");
-    name.className = "name";
-    name.textContent = v.name;
-    const grip = document.createElement("span");
-    grip.className = "grip-icon";
-    grip.innerHTML = GRIP_ICON;
-    const editBtn = document.createElement("button");
-    editBtn.className = "edit-btn";
-    editBtn.innerHTML = "&#9998;";
-    editBtn.onclick = (e) => { e.stopPropagation(); openVehicleEditModal(v.id); };
-    row.appendChild(avatar);
-    row.appendChild(name);
-    row.insertAdjacentHTML("beforeend", statusCountBadgeHTML(v));
-    row.appendChild(grip);
-    row.appendChild(editBtn);
-    enableDragReorder(row, drawerList, v.id, () => {
-      const wasAtRoot = !state.activeVehicleId;
-      state.activeVehicleId = v.id;
-      render();
-      if (wasAtRoot) { drawerOverlay.classList.remove("open"); replaceNav(); }
-      else { closeNav(); }
-    });
-    drawerList.appendChild(row);
-  });
-  if (state.data.vehicles.length === 0) {
-    drawerList.innerHTML = `<div class="empty-hint" style="color:rgba(247,245,240,0.6);">No vehicles yet.</div>`;
-  }
-}
-
 function vehicleStatusCounts(vehicle) {
   let overdue = 0, soon = 0;
   CATEGORIES.forEach(cat => {
     (vehicle.items[cat.key] || []).forEach(item => {
+      if (isDone(item)) return;
       const days = daysUntil(item.dueDate);
       if (days === null) return;
       if (days < 0) overdue++;
@@ -895,76 +814,17 @@ function statusCountBadgeHTML(vehicle) {
   return "";
 }
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function addMonthsISO(dateStr, months) {
-  const d = new Date(dateStr + "T00:00:00");
-  d.setMonth(d.getMonth() + months);
-  return d.toISOString().slice(0, 10);
-}
-
-function markItemDone(vehicleId, category, itemId) {
-  const vehicle = state.data.vehicles.find(v => v.id === vehicleId);
-  const item = vehicle.items[category].find(i => i.id === itemId);
-  if (!item) return;
-  const today = todayISO();
-  item.lastDate = today;
-  if (item.repeatMonths) {
-    item.dueDate = addMonthsISO(today, item.repeatMonths);
-    saveData();
-    render();
-    showToast(`Marked as done · next due in ${item.repeatMonths} month${item.repeatMonths === 1 ? "" : "s"}`);
-    maybeAutoBackup();
-  } else {
-    item.dueDate = null;
-    saveData();
-    render();
-    showToast("Marked as done · set the next due date");
-    openItemModal(vehicleId, category, itemId);
-    maybeAutoBackup();
-  }
-}
-
-function removeItemAttachment(vehicleId, category, itemId, fileName) {
-  if (!confirm(`Remove "${fileName}" from this item?`)) return;
-  const vehicle = state.data.vehicles.find(v => v.id === vehicleId);
-  const item = vehicle.items[category].find(i => i.id === itemId);
-  if (!item) return;
-  const attachmentId = item.attachment ? item.attachment.id : null;
-  item.attachment = null;
-  saveData();
-  render();
-  showToast("Attachment removed");
-  if (attachmentId) fileStoreDelete(attachmentId);
-}
-
-function gcalUrl(item) {
-  const d = item.dueDate ? item.dueDate.replace(/-/g, "") : "";
-  const next = item.dueDate ? new Date(item.dueDate + "T00:00:00") : null;
-  let endStr = d;
-  if (next) {
-    const end = new Date(next); end.setDate(end.getDate() + 1);
-    endStr = end.toISOString().slice(0,10).replace(/-/g, "");
-  }
-  const text = encodeURIComponent(item.label);
-  const details = encodeURIComponent(item.notes || "");
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${d}/${endStr}&details=${details}`;
-}
-
 function renderVehiclePicker() {
   const wrap = document.createElement("div");
   wrap.className = "picker";
-  wrap.innerHTML = `<div class="picker-title">Select a vehicle</div>`;
   const list = document.createElement("div");
   list.className = "picker-list";
-  state.data.vehicles.forEach((v, i) => {
+  state.data.vehicles.forEach(v => {
     const card = document.createElement("div");
     card.className = "picker-card";
     const avatar = document.createElement("div");
-    avatar.className = "avatar";
-    applyAvatar(avatar, v, i);
+    avatar.className = "vtype-icon";
+    avatar.innerHTML = vehicleIconSvg(vehicleTypeOf(v));
     const info = document.createElement("div");
     info.className = "picker-card-info";
     info.innerHTML = `
@@ -978,13 +838,19 @@ function renderVehiclePicker() {
     grip.className = "grip-icon";
     grip.innerHTML = GRIP_ICON;
     card.appendChild(grip);
-    enableDragReorder(card, list, v.id, () => { pushNav(); state.activeVehicleId = v.id; render(); });
+    const openVehicle = () => { pushNav(); state.activeVehicleId = v.id; render(); };
+    card.setAttribute("role", "button");
+    card.tabIndex = 0;
+    card.onkeydown = (e) => { if (e.target === card && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openVehicle(); } };
+    enableDragReorder(card, list, v.id, openVehicle);
     list.appendChild(card);
   });
   wrap.appendChild(list);
   const addTile = document.createElement("button");
   addTile.className = "picker-add";
-  addTile.textContent = "+ Add another vehicle";
+  addTile.textContent = "+";
+  addTile.setAttribute("aria-label", "Add another vehicle");
+  addTile.title = "Add another vehicle";
   addTile.onclick = () => openVehicleModal();
   wrap.appendChild(addTile);
   mainEl.appendChild(wrap);
@@ -999,14 +865,7 @@ function renderVehicle() {
       const empty = document.createElement("div");
       empty.className = "empty-state";
       empty.innerHTML = `
-        <div class="empty-icon">
-          <svg viewBox="0 0 64 64" fill="none">
-            <rect x="7.1" y="32" width="49.8" height="12.8" rx="5.6" fill="#E8A33D"/>
-            <rect x="15.6" y="19.9" width="32.8" height="14.2" rx="6.9" fill="#E8A33D"/>
-            <circle cx="19.2" cy="44.8" r="6.4" fill="#0F2547" stroke="#F7F5F0" stroke-width="1.5"/>
-            <circle cx="44.8" cy="44.8" r="6.4" fill="#0F2547" stroke="#F7F5F0" stroke-width="1.5"/>
-          </svg>
-        </div>
+        <div class="empty-icon">${vehicleIconSvg("sedan")}</div>
         <div class="empty-title">No vehicles yet</div>
         <div class="empty-copy">Add your first vehicle to start tracking maintenance, insurance, and inspection dates in one place.</div>
         <button id="emptyAddVehicle">+ Add your first vehicle</button>
@@ -1019,13 +878,11 @@ function renderVehicle() {
     return;
   }
 
-  const idx = state.data.vehicles.findIndex(v => v.id === vehicle.id);
-
   const header = document.createElement("div");
   header.className = "vehicle-header";
   const subLine = vehicle.registration ? escapeHtml(vehicle.registration) : "No registration on file";
   header.innerHTML = `
-    <div class="avatar" id="vhHeaderAvatar"></div>
+    <div class="vtype-icon">${vehicleIconSvg(vehicleTypeOf(vehicle))}</div>
     <div>
       <div class="vh-name">${escapeHtml(vehicle.name)}</div>
       <div class="vh-sub">${subLine}</div>
@@ -1034,10 +891,10 @@ function renderVehicle() {
   const renameBtn = document.createElement("button");
   renameBtn.className = "rename-btn";
   renameBtn.innerHTML = "&#9998;";
+  renameBtn.setAttribute("aria-label", "Edit vehicle");
   renameBtn.onclick = () => openVehicleEditModal(vehicle.id);
   header.appendChild(renameBtn);
   mainEl.appendChild(header);
-  applyAvatar(document.getElementById("vhHeaderAvatar"), vehicle, idx);
 
   if (vehicle.vin || vehicle.note) {
     const meta = document.createElement("div");
@@ -1057,66 +914,50 @@ function renderVehicle() {
     head.className = "section-head";
     head.innerHTML = `<div class="section-head-title"><span class="cat-icon" style="color:${CATEGORY_ACCENT[cat.key]}">${CATEGORY_ICONS[cat.key]}</span><h2>${cat.label}</h2></div>`;
     const addBtn = document.createElement("button");
-    addBtn.textContent = "+ Add";
+    addBtn.textContent = "+";
+    addBtn.setAttribute("aria-label", "Add to " + cat.label);
+    addBtn.title = "Add to " + cat.label;
     addBtn.onclick = () => openItemModal(vehicle.id, cat.key, null);
     head.appendChild(addBtn);
     section.appendChild(head);
 
     const items = (vehicle.items[cat.key] || []).slice().sort((a,b) => {
+      if (isDone(a) !== isDone(b)) return isDone(a) ? 1 : -1;          // completed events go last
       const da = daysUntil(a.dueDate); const db = daysUntil(b.dueDate);
+      if (da === null && db === null) return 0;
       if (da === null) return 1; if (db === null) return -1;
-      return da - db;
+      return isDone(a) ? db - da : da - db;                              // finished: newest first
     });
 
     if (items.length === 0) {
       const hint = document.createElement("div");
       hint.className = "empty-hint";
-      hint.textContent = `No ${cat.label.toLowerCase()} items yet.`;
+      hint.textContent = `No ${cat.label.toLowerCase()} events yet.`;
       section.appendChild(hint);
     } else {
       items.forEach(item => {
         const days = daysUntil(item.dueDate);
+        const done = isDone(item);
         const card = document.createElement("div");
-        card.className = "item-card";
+        card.className = done ? "item-card is-done" : "item-card";
+        const doneOn = item.lastDate || item.dueDate;
         card.innerHTML = `
-          <div class="item-badge ${statusClass(days)}"></div>
+          <div class="item-badge ${done ? "badge-none" : statusClass(days)}"></div>
           <div class="item-main">
             <div class="label">${escapeHtml(item.label)}</div>
-            <div class="sub">${humanDue(days, item.dueDate)}${item.lastDate ? " · Last: " + humanLast(item.lastDate) : ""}${item.repeatMonths ? " · Repeats every " + item.repeatMonths + "mo" : ""}${item.notes ? " · " + escapeHtml(item.notes) : ""}</div>
+            <div class="sub">${done ? (doneOn ? "Done · " + formatDate(doneOn) : "Done") : humanDue(days, item.dueDate)}</div>
           </div>
         `;
-        const actions = document.createElement("div");
-        actions.className = "item-actions";
-        const doneBtn = document.createElement("button");
-        doneBtn.className = "done-btn";
-        doneBtn.innerHTML = "&#10003;";
-        doneBtn.title = "Mark as done";
-        doneBtn.onclick = () => markItemDone(vehicle.id, cat.key, item.id);
-        actions.appendChild(doneBtn);
-        const editBtn = document.createElement("button");
-        editBtn.innerHTML = "&#9998;";
-        editBtn.onclick = () => openItemModal(vehicle.id, cat.key, item.id);
-        actions.appendChild(editBtn);
-        if (item.dueDate) {
-          const calBtn = document.createElement("button");
-          calBtn.innerHTML = "&#128197;";
-          calBtn.onclick = () => window.open(gcalUrl(item), "_blank");
-          actions.appendChild(calBtn);
-        }
-        if (item.attachment) {
-          const fileBtn = document.createElement("button");
-          fileBtn.title = item.attachment.name;
-          fileBtn.innerHTML = "&#128206;";
-          fileBtn.onclick = () => openAttachment(item.attachment);
-          actions.appendChild(fileBtn);
-          const fileDeleteBtn = document.createElement("button");
-          fileDeleteBtn.innerHTML = "&#10005;";
-          fileDeleteBtn.title = "Remove attachment";
-          fileDeleteBtn.style.cssText = "font-size:12px;";
-          fileDeleteBtn.onclick = () => removeItemAttachment(vehicle.id, cat.key, item.id, item.attachment.name);
-          actions.appendChild(fileDeleteBtn);
-        }
-        card.appendChild(actions);
+        // Whole card = edit. Only one explicit action lives on it: Done.
+        card.setAttribute("role", "button");
+        card.tabIndex = 0;
+        card.onclick = () => openItemModal(vehicle.id, cat.key, item.id);
+        card.onkeydown = (e) => {
+          if (e.target === card && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            openItemModal(vehicle.id, cat.key, item.id);
+          }
+        };
         section.appendChild(card);
       });
     }
@@ -1124,25 +965,13 @@ function renderVehicle() {
   });
 }
 
-async function openAttachment(attachment) {
-  const blob = await fileStoreGet(attachment.id);
-  if (!blob) { showToast("Couldn't find that file"); return; }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = attachment.name;
-  a.target = "_blank";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-}
-
 function escapeHtml(s) {
   return (s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
+let lastRenderDay = null;
 function render() {
+  lastRenderDay = localISO();
   renderVehicle();
   updateFabVisibility();
 }
@@ -1152,139 +981,77 @@ const itemOverlay = document.getElementById("itemOverlay");
 const itemLabel = document.getElementById("itemLabel");
 const itemLast = document.getElementById("itemLast");
 const itemDue = document.getElementById("itemDue");
-const itemRepeat = document.getElementById("itemRepeat");
 const itemNotes = document.getElementById("itemNotes");
 const itemDeleteRow = document.getElementById("itemDeleteRow");
 const itemModalTitle = document.getElementById("itemModalTitle");
-const itemCalLinks = document.getElementById("itemCalLinks");
-const itemAttachmentInfo = document.getElementById("itemAttachmentInfo");
-const itemAttachmentInput = document.getElementById("itemAttachmentInput");
-const itemAttachmentRemove = document.getElementById("itemAttachmentRemove");
-const itemAttachmentView = document.getElementById("itemAttachmentView");
-let existingAttachment = null;   // { id, name, type } already saved on the item being edited, or null
-let pendingAttachmentFile = null; // newly picked File this session, not yet saved
-let removeAttachmentRequested = false;
+const itemStateRow = document.getElementById("itemStateRow");
+const itemDoneBtn = document.getElementById("itemDoneBtn");
+const itemRenewBtn = document.getElementById("itemRenewBtn");
+// Done and Renew only change the form. Nothing is stored until Save; Cancel throws it away.
+let formDone = false;
 
-const ITEM_PLACEHOLDERS = {
-  maintenance: "e.g. Oil change, Winter tires",
-  insurance: "e.g. Third-party liability, Casco",
-  inspection: "e.g. Annual technical inspection"
-};
-
-function renderAttachmentPreview(name, previewUrl) {
-  if (name) {
-    itemAttachmentInfo.textContent = name;
-    itemAttachmentRemove.style.display = "inline-block";
-    if (previewUrl) {
-      itemAttachmentView.style.display = "inline-block";
-      itemAttachmentView.href = previewUrl;
-      itemAttachmentView.download = name;
-    } else {
-      itemAttachmentView.style.display = "none";
-    }
-  } else {
-    itemAttachmentInfo.textContent = "No file attached";
-    itemAttachmentRemove.style.display = "none";
-    itemAttachmentView.style.display = "none";
-  }
+// Done / Renew appear only on saved events. Done is a toggle: pressed = completed.
+function syncItemForm() {
+  itemStateRow.style.display = state.editing && state.editing.itemId ? "flex" : "none";
+  itemDoneBtn.setAttribute("aria-pressed", formDone ? "true" : "false");
+  itemDoneBtn.textContent = formDone ? "\u2713 Done" : "Done";
 }
-
-document.getElementById("itemAttachmentPick").onclick = () => itemAttachmentInput.click();
-itemAttachmentRemove.onclick = () => {
-  pendingAttachmentFile = null;
-  removeAttachmentRequested = true;
-  renderAttachmentPreview(null, null);
+// Every event repeats yearly: entering Last done fills Next due one year later.
+itemLast.addEventListener("change", () => {
+  if (itemLast.value) itemDue.value = addMonthsISO(itemLast.value, REPEAT_YEARLY);
+});
+itemDoneBtn.onclick = () => { formDone = !formDone; syncItemForm(); };
+// Renew: the next yearly period. Next due becomes Last done, and Next due moves on one year
+// (no Next due yet: the period starts today). Changes only these two dates.
+itemRenewBtn.onclick = () => {
+  const start = itemDue.value || localISO();
+  itemLast.value = start;
+  itemDue.value = addMonthsISO(start, REPEAT_YEARLY);
 };
-itemAttachmentInput.onchange = (e) => {
-  const file = e.target.files[0];
-  e.target.value = "";
-  if (!file) return;
-  const maxSize = 10 * 1024 * 1024;
-  if (file.size > maxSize) { showToast("File is too large (max 10MB)"); return; }
-  pendingAttachmentFile = file;
-  removeAttachmentRequested = false;
-  renderAttachmentPreview(file.name, URL.createObjectURL(file));
-};
-
 function openItemModal(vehicleId, category, itemId, replace) {
   state.editing = { vehicleId, category, itemId };
   const vehicle = state.data.vehicles.find(v => v.id === vehicleId);
   const item = itemId ? vehicle.items[category].find(i => i.id === itemId) : null;
-  itemModalTitle.textContent = item ? "Edit item" : "Add item";
-  itemLabel.placeholder = ITEM_PLACEHOLDERS[category] || "e.g. Item name";
+  itemModalTitle.textContent = item ? "Edit event" : "Add event";
   itemLabel.value = item ? item.label : "";
   itemLast.value = item ? item.lastDate || "" : "";
   itemDue.value = item ? item.dueDate || "" : "";
-  itemRepeat.value = item && item.repeatMonths ? String(item.repeatMonths) : "";
+  formDone = !!(item && item.done);
   itemNotes.value = item ? item.notes || "" : "";
-  existingAttachment = item && item.attachment ? item.attachment : null;
-  pendingAttachmentFile = null;
-  removeAttachmentRequested = false;
-  renderAttachmentPreview(existingAttachment ? existingAttachment.name : null, null);
-  if (existingAttachment) {
-    fileStoreGet(existingAttachment.id).then(blob => {
-      if (blob) renderAttachmentPreview(existingAttachment.name, URL.createObjectURL(blob));
-    }).catch(() => {});
-  }
   itemDeleteRow.style.display = item ? "flex" : "none";
-  itemCalLinks.innerHTML = "";
-  if (item && item.dueDate) {
-    const a = document.createElement("a");
-    a.href = gcalUrl(item); a.target = "_blank"; a.textContent = "Add to Google Calendar";
-    itemCalLinks.appendChild(a);
-  }
+  syncItemForm();
   itemOverlay.classList.add("open");
   if (replace) replaceNav(); else pushNav();
 }
 function closeItemModal() { closeNav(); }
 
-async function commitPendingAttachment() {
-  if (pendingAttachmentFile) {
-    if (existingAttachment) await fileStoreDelete(existingAttachment.id);
-    const newId = "att_" + uid();
-    await fileStorePut(newId, pendingAttachmentFile);
-    return { id: newId, name: pendingAttachmentFile.name, type: pendingAttachmentFile.type };
-  }
-  if (removeAttachmentRequested) {
-    if (existingAttachment) await fileStoreDelete(existingAttachment.id);
-    return null;
-  }
-  return existingAttachment;
-}
-
 document.getElementById("itemCancel").onclick = closeItemModal;
-document.getElementById("itemSave").onclick = async () => {
+function saveItemForm() {
+  if (navClosing || !state.editing || !itemOverlay.classList.contains("open")) return;
   const { vehicleId, category, itemId } = state.editing;
   const vehicle = state.data.vehicles.find(v => v.id === vehicleId);
   if (!itemLabel.value.trim()) { showToast("Please enter a name"); return; }
-  const repeatMonths = itemRepeat.value ? parseInt(itemRepeat.value, 10) : null;
-  const attachment = await commitPendingAttachment();
-  if (itemId) {
-    const item = vehicle.items[category].find(i => i.id === itemId);
-    item.label = itemLabel.value.trim();
-    item.lastDate = itemLast.value || null;
-    item.dueDate = itemDue.value || null;
-    item.repeatMonths = repeatMonths;
-    item.notes = itemNotes.value.trim();
-    item.attachment = attachment;
-  } else {
-    vehicle.items[category].push({
-      id: uid(), label: itemLabel.value.trim(), lastDate: itemLast.value || null, dueDate: itemDue.value || null,
-      repeatMonths, notes: itemNotes.value.trim(), attachment
-    });
-  }
+  const fields = {
+    label: itemLabel.value.trim(),
+    lastDate: itemLast.value || null,
+    dueDate: itemDue.value || null,
+    done: formDone,
+    notes: itemNotes.value.trim()
+  };
+  if (itemId) Object.assign(vehicle.items[category].find(i => i.id === itemId), fields);
+  else vehicle.items[category].push({ id: uid(), ...fields });
   saveData();
   closeItemModal();
   render();
   checkDueReminders(true);
-  maybeAutoBackup();
-};
-document.getElementById("itemDelete").onclick = async () => {
+}
+document.getElementById("itemSave").onclick = () => saveItemForm();
+document.getElementById("itemDelete").onclick = () => {
+  if (navClosing || !state.editing || !itemOverlay.classList.contains("open")) return;
   const { vehicleId, category, itemId } = state.editing;
   const vehicle = state.data.vehicles.find(v => v.id === vehicleId);
   const item = vehicle.items[category].find(i => i.id === itemId);
-  if (!confirm(`Delete "${item ? item.label : "this item"}"? This can't be undone.`)) return;
-  if (item && item.attachment) await fileStoreDelete(item.attachment.id);
+  if (!confirm(`Delete "${item ? item.label : "this event"}"? This can't be undone.`)) return;
   vehicle.items[category] = vehicle.items[category].filter(i => i.id !== itemId);
   saveData();
   closeItemModal();
@@ -1301,6 +1068,7 @@ function openCategoryPicker() {
     btn.className = "category-pick-item";
     btn.innerHTML = `<span class="cat-icon" style="color:${CATEGORY_ACCENT[cat.key]}">${CATEGORY_ICONS[cat.key]}</span><span>${cat.label}</span>`;
     btn.onclick = () => {
+      if (navClosing || !categoryPickerOverlay.classList.contains("open")) return;
       categoryPickerOverlay.classList.remove("open");
       openItemModal(state.activeVehicleId, cat.key, null, true);
     };
@@ -1324,141 +1092,80 @@ function updateFabVisibility() {
 const vehicleOverlay = document.getElementById("vehicleOverlay");
 const vehicleModalTitle = document.getElementById("vehicleModalTitle");
 const vehicleDeleteRow = document.getElementById("vehicleDeleteRow");
-const vehiclePhotoPreview = document.getElementById("vehiclePhotoPreview");
-const vehiclePhotoInput = document.getElementById("vehiclePhotoInput");
-const vehiclePhotoRemove = document.getElementById("vehiclePhotoRemove");
+const vehicleTypeGrid = document.getElementById("vehicleTypeGrid");
 let editingVehicleId = null;
-let existingPhotoId = null;   // fileId already saved on the vehicle being edited, or null
-let pendingPhotoBlob = null;  // newly picked Blob this session, not yet saved
-let removePhotoRequested = false;
+let selectedVehicleType = DEFAULT_VEHICLE_TYPE;
 
 document.getElementById("vehicleCancel").onclick = () => closeNav();
 
-function renderPhotoPreview(previewUrl) {
-  if (previewUrl) {
-    vehiclePhotoPreview.innerHTML = `<img src="${previewUrl}" alt="" />`;
-    vehiclePhotoRemove.style.display = "inline-block";
-  } else {
-    vehiclePhotoPreview.innerHTML = "&#128663;";
-    vehiclePhotoRemove.style.display = "none";
-  }
+function renderTypePicker() {
+  vehicleTypeGrid.innerHTML = "";
+  VEHICLE_TYPES.forEach(t => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "type-opt";
+    btn.setAttribute("aria-pressed", t.key === selectedVehicleType ? "true" : "false");
+    btn.innerHTML = vehicleIconSvg(t.key) + `<span>${t.label}</span>`;
+    btn.onclick = () => { selectedVehicleType = t.key; renderTypePicker(); };
+    vehicleTypeGrid.appendChild(btn);
+  });
 }
 
-document.getElementById("vehiclePhotoPick").onclick = () => vehiclePhotoInput.click();
-vehiclePhotoRemove.onclick = () => {
-  pendingPhotoBlob = null;
-  removePhotoRequested = true;
-  renderPhotoPreview(null);
-};
-vehiclePhotoInput.onchange = (e) => {
-  const file = e.target.files[0];
-  e.target.value = "";
-  if (!file) return;
-  if (!file.type.startsWith("image/")) { showToast("Please choose an image file"); return; }
-  const img = new Image();
-  const reader = new FileReader();
-  reader.onload = () => {
-    img.onload = () => {
-      // Downscale to keep the stored file small
-      const maxDim = 500;
-      let { width, height } = img;
-      if (width > height && width > maxDim) { height = Math.round(height * maxDim / width); width = maxDim; }
-      else if (height > maxDim) { width = Math.round(width * maxDim / height); height = maxDim; }
-      const canvas = document.createElement("canvas");
-      canvas.width = width; canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob((blob) => {
-        pendingPhotoBlob = blob;
-        removePhotoRequested = false;
-        renderPhotoPreview(URL.createObjectURL(blob));
-      }, "image/jpeg", 0.87);
-    };
-    img.src = reader.result;
-  };
-  reader.readAsDataURL(file);
-};
-
-function openVehicleModal(replace) {
+function openVehicleModal() {
   editingVehicleId = null;
-  existingPhotoId = null;
-  pendingPhotoBlob = null;
-  removePhotoRequested = false;
+  selectedVehicleType = DEFAULT_VEHICLE_TYPE;
   vehicleModalTitle.textContent = "Add vehicle";
   vehicleDeleteRow.style.display = "none";
   document.getElementById("vehicleName").value = "";
   document.getElementById("vehicleReg").value = "";
   document.getElementById("vehicleVin").value = "";
   document.getElementById("vehicleNote").value = "";
-  renderPhotoPreview(null);
+  renderTypePicker();
   vehicleOverlay.classList.add("open");
-  if (replace) replaceNav(); else pushNav();
+  pushNav();
 }
 
 function openVehicleEditModal(vehicleId) {
   const v = state.data.vehicles.find(x => x.id === vehicleId);
   if (!v) return;
   editingVehicleId = vehicleId;
-  existingPhotoId = v.photo || null;
-  pendingPhotoBlob = null;
-  removePhotoRequested = false;
+  selectedVehicleType = vehicleTypeOf(v);
   vehicleModalTitle.textContent = "Edit vehicle";
   vehicleDeleteRow.style.display = "flex";
   document.getElementById("vehicleName").value = v.name;
   document.getElementById("vehicleReg").value = v.registration || "";
   document.getElementById("vehicleVin").value = v.vin || "";
   document.getElementById("vehicleNote").value = v.note || "";
-  renderPhotoPreview(null);
-  if (existingPhotoId) {
-    fileStoreGet(existingPhotoId).then(blob => {
-      if (blob) renderPhotoPreview(URL.createObjectURL(blob));
-    }).catch(() => {});
-  }
+  renderTypePicker();
   vehicleOverlay.classList.add("open");
   pushNav();
 }
 
-async function commitPendingPhoto() {
-  if (pendingPhotoBlob) {
-    if (existingPhotoId) await fileStoreDelete(existingPhotoId);
-    const newId = "photo_" + uid();
-    await fileStorePut(newId, pendingPhotoBlob);
-    return newId;
-  }
-  if (removePhotoRequested) {
-    if (existingPhotoId) await fileStoreDelete(existingPhotoId);
-    return null;
-  }
-  return existingPhotoId;
-}
-
-document.getElementById("vehicleSave").onclick = async () => {
+document.getElementById("vehicleSave").onclick = () => {
+  if (navClosing || !vehicleOverlay.classList.contains("open")) return;
   const name = document.getElementById("vehicleName").value.trim();
   const registration = document.getElementById("vehicleReg").value.trim();
   const vin = document.getElementById("vehicleVin").value.trim().toUpperCase();
   const note = document.getElementById("vehicleNote").value.trim();
   if (!name) { showToast("Please enter a vehicle name"); return; }
-  const photoId = await commitPendingPhoto();
   if (editingVehicleId) {
     const v = state.data.vehicles.find(x => x.id === editingVehicleId);
     v.name = name;
-    v.photo = photoId;
+    v.type = selectedVehicleType;
     v.registration = registration;
     v.vin = vin;
     v.note = note;
     saveData();
     render();
     showToast("Vehicle updated");
-    maybeAutoBackup();
     closeNav();
   } else {
     const wasAtRoot = !state.activeVehicleId;
-    const v = { id: uid(), name, photo: photoId, registration, vin, note, items: { maintenance: [], insurance: [], inspection: [] } };
+    const v = { id: uid(), name, type: selectedVehicleType, registration, vin, note, items: { maintenance: [], insurance: [], inspection: [] } };
     state.data.vehicles.push(v);
     state.activeVehicleId = v.id;
     saveData();
     render();
-    maybeAutoBackup();
     // Creating a vehicle from the root screen both closes this modal and enters
     // vehicle-detail in one motion — net navigation depth is unchanged, so relabel
     // the current history entry instead of popping it.
@@ -1467,24 +1174,14 @@ document.getElementById("vehicleSave").onclick = async () => {
   }
 };
 
-document.getElementById("vehicleDelete").onclick = async () => {
-  if (!editingVehicleId) return;
+document.getElementById("vehicleDelete").onclick = () => {
+  if (navClosing || !editingVehicleId || !vehicleOverlay.classList.contains("open")) return;
   const v = state.data.vehicles.find(x => x.id === editingVehicleId);
-  if (!confirm(`Delete "${v.name}" and all its items? This can't be undone.`)) return;
-  if (v.photo) await fileStoreDelete(v.photo);
-  for (const cat of CATEGORIES) {
-    for (const item of (v.items[cat.key] || [])) {
-      if (item.attachment) await fileStoreDelete(item.attachment.id);
-    }
-  }
+  if (!v || !confirm(`Delete "${v.name}" and all its events? This can't be undone.`)) return;
   state.data.vehicles = state.data.vehicles.filter(x => x.id !== editingVehicleId);
-  if (state.activeVehicleId === editingVehicleId) {
-    state.activeVehicleId = state.data.vehicles[0]?.id || null;
-  }
   saveData();
-  render();
+  goToRoot();                       // the vehicle you were on is gone: back to the home page
   showToast("Vehicle deleted");
-  closeNav();
 };
 
 /* ---------------- Settings modal ---------------- */
@@ -1492,7 +1189,7 @@ const settingsOverlay = document.getElementById("settingsOverlay");
 document.getElementById("settingsBtn").onclick = () => {
   document.getElementById("notifToggle").checked = !!state.settings.notifications;
   document.getElementById("leadDays").value = state.settings.leadDays || 30;
-  document.getElementById("autoBackupToggle").checked = !!state.settings.autoBackup;
+  document.getElementById("autoBackupToggle").checked = state.settings.autoBackup !== false;
   settingsOverlay.classList.add("open");
   pushNav();
 };
@@ -1500,14 +1197,7 @@ document.getElementById("settingsClose").onclick = () => closeNav();
 
 document.getElementById("autoBackupToggle").onchange = (e) => {
   state.settings.autoBackup = e.target.checked;
-  if (e.target.checked) {
-    state.settings.lastAutoBackup = null; // trigger a backup right away to confirm it works
-    saveSettings();
-    maybeAutoBackup();
-    showToast("Auto-backup turned on");
-  } else {
-    saveSettings();
-  }
+  saveSettings();
 };
 
 document.getElementById("notifToggle").onchange = async (e) => {
@@ -1526,6 +1216,7 @@ document.getElementById("notifToggle").onchange = async (e) => {
     state.settings.notifications = false;
   }
   saveSettings();
+  if (state.settings.notifications) checkDueReminders(true);   // show what's due right away
 };
 document.getElementById("leadDays").onchange = (e) => {
   state.settings.leadDays = parseInt(e.target.value, 10);
@@ -1534,109 +1225,99 @@ document.getElementById("leadDays").onchange = (e) => {
 };
 
 /* ---------------- Export / Import ---------------- */
-async function performBackupExport(silent) {
-  if (!silent) showToast("Preparing backup\u2026");
-  // Bundle every referenced file (vehicle photos + item attachments) as base64
-  // into the same JSON so the backup stays a single, restorable file.
-  const files = {};
-  const fileIds = [];
-  state.data.vehicles.forEach(v => {
-    if (v.photo) fileIds.push(v.photo);
-    CATEGORIES.forEach(cat => {
-      (v.items[cat.key] || []).forEach(item => {
-        if (item.attachment) fileIds.push(item.attachment.id);
-      });
-    });
-  });
-  for (const id of fileIds) {
-    try {
-      const blob = await fileStoreGet(id);
-      if (blob) files[id] = { type: blob.type, data: await blobToDataUrl(blob) };
-    } catch (e) {}
-  }
-  const payload = { vehicles: state.data.vehicles, files };
-  const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+// Hands a file to the browser's downloader. The temporary link is released a minute later,
+// not immediately: revoking it straight after click() can cancel the download on some phones.
+function downloadFile(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = `fleet-log-backup-${new Date().toISOString().slice(0,10)}${silent ? "-auto" : ""}.json`;
+  a.href = url;
+  a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+function performBackupExport(silent) {
+  const payload = JSON.stringify({ vehicles: state.data.vehicles });
+  downloadFile(new Blob([payload], { type: "application/json" }),
+    silent ? `My Fleet ${localISO()}.json` : `fleet-log-backup-${localISO()}.json`);
   if (!silent) showToast("Backup exported");
 }
 
-// If auto-backup is on, quietly download one backup per calendar day, piggybacking
-// on an action the person already took (browsers block downloads with no user
-// interaction at all, so this rides along rather than firing from a timer).
-function maybeAutoBackup() {
-  if (!state.settings.autoBackup) return;
-  const todayKey = new Date().toISOString().slice(0, 10);
-  if (state.settings.lastAutoBackup === todayKey) return;
-  state.settings.lastAutoBackup = todayKey;
-  saveSettings();
-  performBackupExport(true).then(() => showToast("Auto-backup saved to Downloads")).catch(() => {});
+// Silent auto-backup: every saved change writes one backup file ("My Fleet <date>.json")
+// to Downloads. No toast, no UI. The short delay lets any follow-up writes from the same
+// action finish so one action never produces two files.
+let autoBackupTimer = null;
+function scheduleAutoBackup() {
+  if (state.settings.autoBackup === false) return;
+  clearTimeout(autoBackupTimer);
+  autoBackupTimer = setTimeout(() => { try { performBackupExport(true); } catch (e) {} }, 250);
 }
 
 document.getElementById("exportBtn").onclick = () => performBackupExport(false);
 document.getElementById("importBtn").onclick = () => document.getElementById("importFile").click();
 document.getElementById("importFile").onchange = (e) => {
   const file = e.target.files[0];
+  e.target.value = "";
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = async () => {
-    try {
-      const parsed = JSON.parse(reader.result);
-      if (!parsed.vehicles) throw new Error("bad format");
-      showToast("Restoring backup\u2026");
-      // Write any bundled files into IndexedDB before switching over the data,
-      // so photo/attachment references resolve as soon as we render.
-      if (parsed.files) {
-        for (const [id, f] of Object.entries(parsed.files)) {
-          try { await fileStorePut(id, dataUrlToBlob(f.data)); } catch (e) {}
-        }
-      }
-      state.data = { vehicles: parsed.vehicles };
-      await migrateInlineFilesToStore(); // handles older backups with inline base64 files
-      state.activeVehicleId = null;
-      saveData();
-      render();
-      closeNav();
-      showToast("Backup imported");
-    } catch (err) {
-      showToast("Could not read that file");
-    }
+  reader.onload = () => {
+    let data = null;
+    try { data = normalizeData(JSON.parse(reader.result)); } catch (err) {}
+    if (!data) { showToast("That file isn't a My Fleet backup"); return; }
+    const n = data.vehicles.length;
+    if (!confirm(`Replace everything in the app with this backup (${n} vehicle${n === 1 ? "" : "s"})?`)) return;
+    state.data = data;
+    if (!saveData(false)) return;
+    goToRoot();
+    showToast("Backup imported");
   };
+  reader.onerror = () => showToast("Couldn't open that file");
   reader.readAsText(file);
-  e.target.value = "";
 };
 
+// iCalendar text values must escape \ ; , and newlines, and lines longer than 75 bytes are
+// folded (CRLF + space). Byte-aware because Cyrillic letters take 2 bytes each.
+function icsText(v) {
+  return String(v || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+}
+function icsFold(line) {
+  const bytesOf = ch => { const c = ch.codePointAt(0); return c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4; };
+  const parts = []; let cur = "", n = 0;
+  for (const ch of line) {
+    const b = bytesOf(ch);
+    if (n + b > 75) { parts.push(cur); cur = " " + ch; n = 1 + b; } else { cur += ch; n += b; }
+  }
+  parts.push(cur);
+  return parts.join("\r\n");
+}
 document.getElementById("icsAllBtn").onclick = () => {
-  let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//My Fleet//EN\n";
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");   // e.g. 20261002T101500Z
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//My Fleet//EN", "CALSCALE:GREGORIAN"];
   state.data.vehicles.forEach(v => {
     CATEGORIES.forEach(cat => {
       (v.items[cat.key] || []).forEach(item => {
-        if (!item.dueDate) return;
-        const d = item.dueDate.replace(/-/g, "");
-        const next = new Date(item.dueDate + "T00:00:00");
-        next.setDate(next.getDate() + 1);
-        const endStr = next.toISOString().slice(0,10).replace(/-/g, "");
-        ics += `BEGIN:VEVENT\nUID:${item.id}@fleetlog\nDTSTART;VALUE=DATE:${d}\nDTEND;VALUE=DATE:${endStr}\nSUMMARY:${v.name} - ${item.label} (${cat.label})\nDESCRIPTION:${(item.lastDate ? "Last done: " + item.lastDate + ". " : "") + (item.notes||"").replace(/\n/g," ")}\nEND:VEVENT\n`;
+        if (!item.dueDate || isDone(item)) return;
+        const desc = (item.lastDate ? "Last done: " + item.lastDate + ". " : "") + (item.notes || "");
+        lines.push("BEGIN:VEVENT",
+          `UID:${item.id}@fleetlog`,
+          `DTSTAMP:${stamp}`,
+          `DTSTART;VALUE=DATE:${item.dueDate.replace(/-/g, "")}`,
+          `DTEND;VALUE=DATE:${nextDayISO(item.dueDate).replace(/-/g, "")}`,
+          `SUMMARY:${icsText(`${v.name} - ${item.label} (${cat.label})`)}`);
+        if (desc) lines.push(`DESCRIPTION:${icsText(desc)}`);
+        lines.push("END:VEVENT");
       });
     });
   });
-  ics += "END:VCALENDAR";
-  const blob = new Blob([ics], { type: "text/calendar" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = "fleet-log-all-events.ics";
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
+  lines.push("END:VCALENDAR");
+  downloadFile(new Blob([lines.map(icsFold).join("\r\n") + "\r\n"], { type: "text/calendar" }), "fleet-log-all-events.ics");
 };
 
 /* ---------------- Reminders / local notifications ---------------- */
 function checkDueReminders(force) {
   if (!state.settings.notifications) return;
   if (!("Notification" in window) || Notification.permission !== "granted") return;
-  const todayKey = new Date().toISOString().slice(0,10);
+  const todayKey = localISO();
   if (!force && state.settings.lastCheck === todayKey) return;
   state.settings.lastCheck = todayKey;
   saveSettings();
@@ -1646,6 +1327,7 @@ function checkDueReminders(force) {
   state.data.vehicles.forEach(v => {
     CATEGORIES.forEach(cat => {
       (v.items[cat.key] || []).forEach(item => {
+        if (isDone(item)) return;
         const days = daysUntil(item.dueDate);
         if (days !== null && days <= lead) {
           due.push({ v, cat, item, days });
@@ -1667,15 +1349,15 @@ function checkDueReminders(force) {
   const body = due.slice(0,3).map(d => `${d.v.name}: ${d.item.label} (${d.days < 0 ? "overdue" : d.days + "d left"})`).join("\n")
     + (due.length > 3 ? `\n+${due.length - 3} more` : "");
 
-  const title = due.some(d => d.days < 0) ? "My Fleet: overdue items" : "My Fleet: items due soon";
-  const options = { body, icon: "icons/icon-192.png", badge: "icons/icon-192.png", tag: "fleet-log-due" };
+  const title = due.some(d => d.days < 0) ? "My Fleet: overdue events" : "My Fleet: events due soon";
+  const options = { body, icon: "icons/icon-192.png", badge: "icons/badge-96.png", tag: "fleet-log-due" };
 
   if (navigator.serviceWorker && navigator.serviceWorker.controller) {
     navigator.serviceWorker.controller.postMessage({ type: "SHOW_NOTIFICATION", title, options });
   } else if (navigator.serviceWorker) {
     navigator.serviceWorker.ready.then(reg => reg.showNotification(title, options));
   } else {
-    new Notification(title, options);
+    try { new Notification(title, options); } catch (e) {}
   }
 }
 
@@ -1689,17 +1371,31 @@ if ("serviceWorker" in navigator) {
 // Re-check reminders whenever the app becomes visible (covers "opened the app" case
 // since Android may not reliably wake background web pages for scheduled checks).
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") checkDueReminders(false);
+  if (document.visibilityState !== "visible") return;
+  if (lastRenderDay !== localISO()) render();   // day changed while the app sat in the background
+  checkDueReminders(false);
 });
 
 /* ---------------- Init ---------------- */
 render();
-pushNav(); // root sentinel, so the very first back press is interceptable for the exit-confirm above
+restoreRootSentinel(); // root sentinel, so the first back press on the home page can be caught
+if (dataLoadProblem) showToast("Saved data couldn't be read. Import a backup to restore");
+// One-time cleanup of the removed photo/document feature: save the data without the old
+// references, and delete the storage area that held the files themselves.
+if (hadLegacyFields) saveData(false);
+const FILES_REMOVED_KEY = "fleetlog_files_removed";
+try {
+  if (window.indexedDB && !localStorage.getItem(FILES_REMOVED_KEY)) {
+    const req = indexedDB.deleteDatabase("fleetlog_files");
+    req.onsuccess = () => { try { localStorage.setItem(FILES_REMOVED_KEY, "1"); } catch (e) {} };
+  }
+} catch (e) {}
 setTimeout(() => checkDueReminders(false), 1200);
-migrateInlineFilesToStore().then(() => {
-  // Re-render in case the current screen shows a photo/attachment that just moved store.
-  render();
-}).catch(() => {});
+// Ask the browser to keep this app's data even when the phone is low on space. Installed apps
+// are usually granted this silently; it doesn't protect against clearing data / uninstalling.
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persisted().then(p => p || navigator.storage.persist()).catch(() => {});
+}
 </script>
 </body>
 </html>
