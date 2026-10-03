@@ -381,12 +381,6 @@
       </div>
       <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="importBtn">Import</button>
     </div>
-    <div class="settings-row">
-      <div class="label-block">
-        <div class="t">Export to calendar</div>
-      </div>
-      <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="icsAllBtn">Export</button>
-    </div>
     <input type="file" id="importFile" accept="application/json" style="display:none;" />
     <div class="modal-actions">
       <button class="btn btn-primary" id="settingsClose">Done</button>
@@ -492,15 +486,10 @@ const state = {
 };
 
 /* ---------------- Date helpers ----------------
-   All calendar dates are the phone's LOCAL date. (toISOString() is UTC, which in Bulgaria
-   is a day behind between midnight and 2-3am and shifts all-day calendar end dates.) */
+   All dates are the phone's LOCAL date. (toISOString() is UTC, which in Bulgaria
+   is a day behind between midnight and 2-3am.) */
 function localISO(d = new Date()) {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-}
-function nextDayISO(dateStr) {
-  const d = new Date(dateStr + "T00:00:00");
-  d.setDate(d.getDate() + 1);
-  return localISO(d);
 }
 // Adds whole months, clamping to the month's last day (31 Jan + 1 month = 28/29 Feb, not 3 Mar).
 function addMonthsISO(dateStr, months) {
@@ -1273,44 +1262,6 @@ document.getElementById("importFile").onchange = (e) => {
   };
   reader.onerror = () => showToast("Couldn't open that file");
   reader.readAsText(file);
-};
-
-// iCalendar text values must escape \ ; , and newlines, and lines longer than 75 bytes are
-// folded (CRLF + space). Byte-aware because Cyrillic letters take 2 bytes each.
-function icsText(v) {
-  return String(v || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
-}
-function icsFold(line) {
-  const bytesOf = ch => { const c = ch.codePointAt(0); return c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4; };
-  const parts = []; let cur = "", n = 0;
-  for (const ch of line) {
-    const b = bytesOf(ch);
-    if (n + b > 75) { parts.push(cur); cur = " " + ch; n = 1 + b; } else { cur += ch; n += b; }
-  }
-  parts.push(cur);
-  return parts.join("\r\n");
-}
-document.getElementById("icsAllBtn").onclick = () => {
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");   // e.g. 20261002T101500Z
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//My Fleet//EN", "CALSCALE:GREGORIAN"];
-  state.data.vehicles.forEach(v => {
-    CATEGORIES.forEach(cat => {
-      (v.items[cat.key] || []).forEach(item => {
-        if (!item.dueDate || isDone(item)) return;
-        const desc = (item.lastDate ? "Last done: " + item.lastDate + ". " : "") + (item.notes || "");
-        lines.push("BEGIN:VEVENT",
-          `UID:${item.id}@fleetlog`,
-          `DTSTAMP:${stamp}`,
-          `DTSTART;VALUE=DATE:${item.dueDate.replace(/-/g, "")}`,
-          `DTEND;VALUE=DATE:${nextDayISO(item.dueDate).replace(/-/g, "")}`,
-          `SUMMARY:${icsText(`${v.name} - ${item.label} (${cat.label})`)}`);
-        if (desc) lines.push(`DESCRIPTION:${icsText(desc)}`);
-        lines.push("END:VEVENT");
-      });
-    });
-  });
-  lines.push("END:VCALENDAR");
-  downloadFile(new Blob([lines.map(icsFold).join("\r\n") + "\r\n"], { type: "text/calendar" }), "fleet-log-all-events.ics");
 };
 
 /* ---------------- Reminders / local notifications ---------------- */
