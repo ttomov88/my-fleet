@@ -204,6 +204,15 @@
     font-family: inherit;
   }
   .field textarea { resize: vertical; min-height: 60px; }
+  .restore-list { display: flex; flex-direction: column; gap: 8px; max-height: 55vh; overflow-y: auto; }
+  .restore-item {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%;
+    padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--cream); color: var(--ink); font-family: inherit; text-align: left; cursor: pointer;
+  }
+  .restore-item .when { font-weight: 600; font-size: 14.5px; }
+  .restore-item .what { font-size: 12.5px; color: var(--ink-soft); white-space: nowrap; }
+  .restore-item:disabled { opacity: 0.6; cursor: default; }
   .btn-done { background: rgba(47,158,91,0.12); color: var(--green); }
   .btn-done[aria-pressed="true"] { background: var(--green); color: #fff; }
   .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
@@ -381,9 +390,25 @@
       </div>
       <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="importBtn">Import</button>
     </div>
+    <div class="settings-row">
+      <div class="label-block">
+        <div class="t">Restore point</div>
+      </div>
+      <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="restoreBtn">Restore</button>
+    </div>
     <input type="file" id="importFile" accept="application/json" style="display:none;" />
     <div class="modal-actions">
       <button class="btn btn-primary" id="settingsClose">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="restoreOverlay">
+  <div class="modal">
+    <h3>Restore point</h3>
+    <div class="restore-list" id="restoreList"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="restoreClose">Cancel</button>
     </div>
   </div>
 </div>
@@ -455,8 +480,8 @@ function loadData() {
   }
   return { vehicles: [] };
 }
-// Every saved change also writes a backup file (see scheduleAutoBackup). Pass false for
-// internal writes that aren't a user change, such as importing a backup.
+// Every saved change silently adds a restore point and, on the first save of the day, writes
+// one backup file to Downloads. Pass false for internal writes that aren't a user change.
 function saveData(backup = true) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
@@ -464,8 +489,31 @@ function saveData(backup = true) {
     showToast("Couldn't save. Phone storage may be full");
     return false;
   }
-  if (backup) scheduleAutoBackup();
+  if (backup) { addRestorePoint(); scheduleDailyBackup(); }
   return true;
+}
+
+/* ---------------- Restore points ----------------
+   A silent copy of the data after each saved change, kept inside the app (last 20). No file,
+   no prompt. They live in the same storage as the data, so clearing the app's data or
+   uninstalling removes them too; the daily backup file in Downloads covers that case. */
+const RESTORE_KEY = "fleetlog_restore_points";
+const RESTORE_MAX = 20;
+function loadRestorePoints() {
+  try {
+    const list = JSON.parse(localStorage.getItem(RESTORE_KEY) || "[]");
+    return Array.isArray(list) ? list.filter(p => p && typeof p.t === "number" && p.data) : [];
+  } catch (e) { return []; }
+}
+function addRestorePoint() {
+  const json = JSON.stringify(state.data);
+  let points = loadRestorePoints();
+  if (points[0] && JSON.stringify(points[0].data) === json) return;   // nothing changed since the last one
+  points.unshift({ t: Date.now(), data: JSON.parse(json) });
+  points = points.slice(0, RESTORE_MAX);
+  while (points.length) {                                             // storage tight: keep fewer, never fail the save
+    try { localStorage.setItem(RESTORE_KEY, JSON.stringify(points)); return; } catch (e) { points.pop(); }
+  }
 }
 
 const DEFAULT_SETTINGS = { notifications: false, leadDays: 30, lastCheck: null, autoBackup: true };
@@ -670,7 +718,7 @@ window.addEventListener("popstate", () => {
 // Close everything and return to the home page in one step, keeping the back-gesture
 // history in sync (used after deleting the open vehicle and after importing a backup).
 function goToRoot() {
-  [itemOverlay, vehicleOverlay, categoryPickerOverlay, settingsOverlay].forEach(o => o.classList.remove("open"));
+  document.querySelectorAll(".overlay.open").forEach(o => o.classList.remove("open"));   // every panel, incl. any added later
   state.editing = null;
   state.activeVehicleId = null;
   render();
@@ -688,6 +736,7 @@ function performTopLevelClose() {
   if (itemOverlay.classList.contains("open")) { itemOverlay.classList.remove("open"); state.editing = null; return; }
   if (vehicleOverlay.classList.contains("open")) { vehicleOverlay.classList.remove("open"); return; }
   if (categoryPickerOverlay.classList.contains("open")) { categoryPickerOverlay.classList.remove("open"); return; }
+  if (restoreOverlay.classList.contains("open")) { restoreOverlay.classList.remove("open"); return; }
   if (settingsOverlay.classList.contains("open")) { settingsOverlay.classList.remove("open"); return; }
   if (state.activeVehicleId) { state.activeVehicleId = null; render(); return; }
   // On the home page with nothing open: this press just used up the root sentinel, so the
@@ -1225,19 +1274,27 @@ function downloadFile(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+// "My Fleet 2026-10-03 14-35.json". The time keeps every name unique, so Chrome never finds a
+// file with the same name in Downloads and never asks "Download again?".
+function backupFileName() {
+  const d = new Date();
+  return `My Fleet ${localISO(d)} ${String(d.getHours()).padStart(2, "0")}-${String(d.getMinutes()).padStart(2, "0")}.json`;
+}
 function performBackupExport(silent) {
   const payload = JSON.stringify({ vehicles: state.data.vehicles });
-  downloadFile(new Blob([payload], { type: "application/json" }),
-    silent ? `My Fleet ${localISO()}.json` : `fleet-log-backup-${localISO()}.json`);
+  downloadFile(new Blob([payload], { type: "application/json" }), backupFileName());
   if (!silent) showToast("Backup exported");
 }
 
-// Silent auto-backup: every saved change writes one backup file ("My Fleet <date>.json")
-// to Downloads. No toast, no UI. The short delay lets any follow-up writes from the same
-// action finish so one action never produces two files.
+// Auto-backup: the first saved change of each day writes one file to Downloads, silently.
+// (Every change is still kept as a restore point inside the app.)
 let autoBackupTimer = null;
-function scheduleAutoBackup() {
+function scheduleDailyBackup() {
   if (state.settings.autoBackup === false) return;
+  const today = localISO();
+  if (state.settings.lastAutoBackupDay === today) return;
+  state.settings.lastAutoBackupDay = today;
+  saveSettings();
   clearTimeout(autoBackupTimer);
   autoBackupTimer = setTimeout(() => { try { performBackupExport(true); } catch (e) {} }, 250);
 }
@@ -1257,12 +1314,56 @@ document.getElementById("importFile").onchange = (e) => {
     if (!confirm(`Replace everything in the app with this backup (${n} vehicle${n === 1 ? "" : "s"})?`)) return;
     state.data = data;
     if (!saveData(false)) return;
+    addRestorePoint();
     goToRoot();
     showToast("Backup imported");
   };
   reader.onerror = () => showToast("Couldn't open that file");
   reader.readAsText(file);
 };
+
+/* ---------------- Restore list ---------------- */
+const restoreOverlay = document.getElementById("restoreOverlay");
+function restoreLabel(t) {
+  const d = new Date(t);
+  const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  if (localISO(d) === localISO()) return `Today ${time}`;
+  if (localISO(d) === localISO(yesterday)) return `Yesterday ${time}`;
+  return `${d.toLocaleDateString(undefined, { day: "numeric", month: "short" })} ${time}`;
+}
+function restoreSummary(data) {
+  const vs = (data && data.vehicles) || [];
+  const ev = vs.reduce((n, v) => n + CATEGORIES.reduce((m, c) => m + ((v.items && v.items[c.key]) || []).length, 0), 0);
+  return `${vs.length} vehicle${vs.length === 1 ? "" : "s"} · ${ev} event${ev === 1 ? "" : "s"}`;
+}
+document.getElementById("restoreBtn").onclick = () => {
+  const points = loadRestorePoints();
+  if (!points.length) { showToast("No restore points yet"); return; }
+  const current = JSON.stringify(state.data);
+  const list = document.getElementById("restoreList");
+  list.innerHTML = "";
+  points.forEach(p => {
+    const isNow = JSON.stringify(p.data) === current;
+    const btn = document.createElement("button");
+    btn.className = "restore-item";
+    btn.disabled = isNow;
+    btn.innerHTML = `<span class="when">${restoreLabel(p.t)}${isNow ? " · now" : ""}</span><span class="what">${restoreSummary(p.data)}</span>`;
+    btn.onclick = () => {
+      const data = normalizeData(p.data);
+      if (!data) { showToast("That restore point can't be read"); return; }
+      if (!confirm(`Go back to ${restoreLabel(p.t)}? Changes made after it will be replaced.`)) return;
+      state.data = data;
+      if (!saveData()) return;          // the restored state becomes the newest restore point
+      goToRoot();
+      showToast(`Restored to ${restoreLabel(p.t)}`);
+    };
+    list.appendChild(btn);
+  });
+  restoreOverlay.classList.add("open");
+  pushNav();
+};
+document.getElementById("restoreClose").onclick = () => closeNav();
 
 /* ---------------- Reminders / local notifications ---------------- */
 function checkDueReminders(force) {
