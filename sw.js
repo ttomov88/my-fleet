@@ -1,8 +1,8 @@
 // Bump CACHE_NAME whenever icons, manifest.json or vendor/ change: those are served cache-first.
 // The app's own code (index.html, css/, js/) is network-first, so updates show up right away.
-const CACHE_NAME = "fleet-log-v14";
+const CACHE_NAME = "fleet-log-v15";
 // The app itself: these must download for a new version to install.
-const CORE = ["./", "./index.html", "./css/app.css", "./js/i18n.js", "./js/app.js", "./manifest.json", "./vendor/supabase.js"];
+const CORE = ["./", "./index.html", "./css/app.css?v=15", "./js/i18n.js?v=15", "./js/app.js?v=15", "./manifest.json", "./vendor/supabase.js"];
 // Nice to have offline. A missing or misplaced icon must never block an app update.
 const OPTIONAL = [
   "./icons/icon-192.png",
@@ -48,7 +48,9 @@ self.addEventListener("fetch", (event) => {
     // Network-first for the app's own code so updates show up immediately; the cached copy is
     // only used offline (pages fall back to index.html if this exact URL was never cached).
     event.respondWith(
-      fetch(event.request)
+      // no-cache: always ask the server whether the file changed (the phone's own HTTP cache
+      // would otherwise serve a stale copy for up to 10 minutes after an update).
+      fetch(event.request, { cache: "no-cache" })
         .then((response) => {
           if (response && response.status === 200) {
             const copy = response.clone();

@@ -7,10 +7,10 @@ import fs from "node:fs";
 const root = new URL("../", import.meta.url);
 const read = p => fs.readFileSync(new URL(p, root), "utf8");
 const html = read("index.html")
-  .replace('<link rel="stylesheet" href="css/app.css" />', () => `<style>${read("css/app.css")}</style>`)
+  .replace(/<link rel="stylesheet" href="css\/app\.css(\?v=\d+)?" \/>/, () => `<style>${read("css/app.css")}</style>`)
   .replace('<script src="vendor/supabase.js"></script>', "")
-  .replace('<script src="js/i18n.js"></script>', () => `<script>${read("js/i18n.js")}</script>`)
-  .replace('<script src="js/app.js"></script>', () => `<script>${read("js/app.js")}</script>`);
+  .replace(/<script src="js\/i18n\.js(\?v=\d+)?"><\/script>/, () => `<script>${read("js/i18n.js")}</script>`)
+  .replace(/<script src="js\/app\.js(\?v=\d+)?"><\/script>/, () => `<script>${read("js/app.js")}</script>`);
 const wait = (ms = 0) => new Promise(r => setTimeout(r, ms));
 let pass = 0, fail = 0;
 const ok = (cond, name) => { if (cond) { pass++; console.log("  ✓", name); } else { fail++; console.log("  ✗", name); } };

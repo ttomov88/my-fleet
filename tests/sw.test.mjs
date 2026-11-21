@@ -33,5 +33,10 @@ ok(shown[1] && shown[1].title === "My Fleet" && shown[1].body === "plain", "a ma
 let responded = false;
 listeners.fetch({ request: { method: "GET", url: "https://lsyihonmzxpjnmiueqgp.supabase.co/rest/v1/fleets", mode: "cors", destination: "" }, respondWith: () => { responded = true; } });
 ok(!responded, "account data requests are never cached");
+// The page and the service worker must ask for the same file versions.
+const indexHtml = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const cacheV = code.match(/fleet-log-v(\d+)/)[1];
+const pageVs = [...indexHtml.matchAll(/\?v=(\d+)/g)].map(m => m[1]);
+ok(pageVs.length === 3 && pageVs.every(v => v === cacheV) && [...code.matchAll(/\?v=(\d+)/g)].every(m => m[1] === cacheV), "index.html, sw.js and the cache use the same version (" + cacheV + ")");
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
