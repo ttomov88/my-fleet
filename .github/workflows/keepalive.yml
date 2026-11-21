@@ -6,6 +6,9 @@ on:
   schedule:
     - cron: "17 3 * * *"   # every day, 03:17 UTC
   workflow_dispatch:
+  push:                     # also runs once whenever this file changes, as a check
+    branches: [main]
+    paths: [".github/workflows/keepalive.yml"]
 
 permissions:
   contents: write
@@ -32,6 +35,7 @@ jobs:
       - name: Monthly commit so GitHub keeps the schedule on
         run: |
           if [ "$(date -u +%d)" != "01" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then exit 0; fi
+          git pull --ff-only -q || true
           date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/keepalive.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
