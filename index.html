@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bg">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -25,8 +25,8 @@
 <div id="app">
   <header class="appbar">
     <div class="appbar-left">
-      <button class="round-btn avatar-btn" id="settingsBtn" aria-label="Settings"><span id="avatarInitial">·</span></button>
-      <button class="round-btn" id="backBtn" aria-label="Back" hidden>
+      <button class="round-btn avatar-btn" id="settingsBtn" data-i18n-aria="settings" aria-label="Settings"><span id="avatarInitial">·</span></button>
+      <button class="round-btn" id="backBtn" data-i18n-aria="back" aria-label="Back" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
     </div>
@@ -42,10 +42,10 @@
 <div class="overlay" id="attentionOverlay">
   <div class="modal">
     <div class="sheet-grab"></div>
-    <h3>Needs attention</h3>
+    <h3 data-i18n="needs_attention">Needs attention</h3>
     <div class="group" id="attentionList"></div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" id="attentionClose">Close</button>
+      <button class="btn btn-secondary" id="attentionClose" data-i18n="close">Close</button>
     </div>
   </div>
 </div>
@@ -53,10 +53,10 @@
 <div class="overlay" id="categoryPickerOverlay">
   <div class="modal">
     <div class="sheet-grab"></div>
-    <h3>Add event</h3>
+    <h3 data-i18n="add_event_title">Add event</h3>
     <div class="group" id="categoryPickList"></div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" id="categoryPickCancel">Cancel</button>
+      <button class="btn btn-secondary" id="categoryPickCancel" data-i18n="cancel">Cancel</button>
     </div>
   </div>
 </div>
@@ -66,33 +66,33 @@
     <div class="sheet-grab"></div>
     <h3 id="itemModalTitle">Add event</h3>
     <div class="field">
-      <label for="itemLabel">Name</label>
+      <label for="itemLabel" data-i18n="name">Name</label>
       <input id="itemLabel" autocomplete="off" />
     </div>
     <div class="field-row">
       <div class="field">
-        <label for="itemLast">Last done</label>
+        <label for="itemLast" data-i18n="last_done">Last done</label>
         <input id="itemLast" type="date" />
       </div>
       <div class="field">
-        <label for="itemDue">Next due</label>
+        <label for="itemDue" data-i18n="next_due">Next due</label>
         <input id="itemDue" type="date" />
       </div>
     </div>
     <div class="field">
-      <label for="itemNotes">Notes</label>
+      <label for="itemNotes" data-i18n="notes">Notes</label>
       <input id="itemNotes" autocomplete="off" />
     </div>
     <div class="chip-row" id="itemStateRow" style="display:none;">
       <button class="chip chip-done" id="itemDoneBtn" aria-pressed="false">Done</button>
-      <button class="chip" id="itemRenewBtn">&#8635; Renew for a year</button>
+      <button class="chip" id="itemRenewBtn" data-i18n="renew">&#8635; Renew for a year</button>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" id="itemCancel">Cancel</button>
-      <button class="btn btn-primary" id="itemSave">Save</button>
+      <button class="btn btn-secondary" id="itemCancel" data-i18n="cancel">Cancel</button>
+      <button class="btn btn-primary" id="itemSave" data-i18n="save">Save</button>
     </div>
     <div class="modal-actions" id="itemDeleteRow" style="display:none;">
-      <button class="btn btn-text-danger" id="itemDelete">Delete event</button>
+      <button class="btn btn-text-danger" id="itemDelete" data-i18n="delete_event">Delete event</button>
     </div>
   </div>
 </div>
@@ -102,33 +102,33 @@
     <div class="sheet-grab"></div>
     <h3 id="vehicleModalTitle">Add vehicle</h3>
     <div class="field">
-      <label>Type</label>
-      <div class="type-grid" id="vehicleTypeGrid" role="group" aria-label="Vehicle type"></div>
+      <label data-i18n="type">Type</label>
+      <div class="type-grid" id="vehicleTypeGrid" role="group" data-i18n-aria="vehicle_type" aria-label="Vehicle type"></div>
     </div>
     <div class="field">
-      <label for="vehicleName">Name</label>
+      <label for="vehicleName" data-i18n="name">Name</label>
       <input id="vehicleName" autocomplete="off" />
     </div>
     <div class="field-row">
       <div class="field">
-        <label for="vehicleReg">Registration</label>
+        <label for="vehicleReg" data-i18n="registration">Registration</label>
         <input id="vehicleReg" autocomplete="off" />
       </div>
       <div class="field">
-        <label for="vehicleVin">VIN</label>
+        <label for="vehicleVin" data-i18n="vin">VIN</label>
         <input id="vehicleVin" autocomplete="off" style="text-transform:uppercase;" />
       </div>
     </div>
     <div class="field">
-      <label for="vehicleNote">Note (optional)</label>
+      <label for="vehicleNote" data-i18n="note_optional">Note (optional)</label>
       <textarea id="vehicleNote" rows="2"></textarea>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" id="vehicleCancel">Cancel</button>
-      <button class="btn btn-primary" id="vehicleSave">Save</button>
+      <button class="btn btn-secondary" id="vehicleCancel" data-i18n="cancel">Cancel</button>
+      <button class="btn btn-primary" id="vehicleSave" data-i18n="save">Save</button>
     </div>
     <div class="modal-actions" id="vehicleDeleteRow" style="display:none;">
-      <button class="btn btn-text-danger" id="vehicleDelete">Delete vehicle</button>
+      <button class="btn btn-text-danger" id="vehicleDelete" data-i18n="delete_vehicle">Delete vehicle</button>
     </div>
   </div>
 </div>
@@ -144,65 +144,72 @@
       </div>
     </div>
 
-    <div class="group-title">Reminders</div>
+    <div class="group-title" data-i18n="reminders_group">Reminders</div>
     <div class="group">
       <div class="row">
-        <div class="row-text"><div class="row-title">Notifications</div><div class="row-sub">Every day at 08:00</div></div>
+        <div class="row-text"><div class="row-title" data-i18n="notifications">Notifications</div><div class="row-sub" data-i18n="daily_8">Every day at 08:00</div></div>
         <label class="switch">
-          <input type="checkbox" id="notifToggle" aria-label="Reminder notifications" />
+          <input type="checkbox" id="notifToggle" data-i18n-aria="reminder_notifications" aria-label="Reminder notifications" />
           <span class="slider"></span>
         </label>
       </div>
       <div class="row">
-        <div class="row-text"><div class="row-title">Remind me</div></div>
-        <select id="leadDays" class="row-select" aria-label="Remind me">
-          <option value="7">7 days before</option>
-          <option value="14">14 days before</option>
-          <option value="30" selected>30 days before</option>
+        <div class="row-text"><div class="row-title" data-i18n="remind_me">Remind me</div></div>
+        <select id="leadDays" class="row-select" data-i18n-aria="remind_me" aria-label="Remind me">
+          <option value="7" data-i18n="days_before" data-n="7">7 days before</option>
+          <option value="14" data-i18n="days_before" data-n="14">14 days before</option>
+          <option value="30" data-i18n="days_before" data-n="30" selected>30 days before</option>
         </select>
       </div>
       <button class="row row-btn" id="testNotifBtn">
-        <div class="row-text"><div class="row-title">Send a test notification</div></div>
+        <div class="row-text"><div class="row-title" data-i18n="send_test">Send a test notification</div></div>
         <span class="chev"></span>
       </button>
     </div>
 
-    <div class="group-title">Appearance</div>
+    <div class="group-title" data-i18n="appearance">Appearance</div>
     <div class="group">
       <div class="row">
-        <div class="row-text"><div class="row-title">Theme</div></div>
-        <div class="segmented" id="themeSeg" role="radiogroup" aria-label="Theme">
-          <button role="radio" data-theme="auto">Auto</button>
-          <button role="radio" data-theme="light">Light</button>
-          <button role="radio" data-theme="dark">Dark</button>
+        <div class="row-text"><div class="row-title" data-i18n="theme">Theme</div></div>
+        <div class="segmented" id="themeSeg" role="radiogroup" data-i18n-aria="theme" aria-label="Theme">
+          <button role="radio" data-theme="auto" data-i18n="theme_auto">Auto</button>
+          <button role="radio" data-theme="light" data-i18n="theme_light">Light</button>
+          <button role="radio" data-theme="dark" data-i18n="theme_dark">Dark</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-text"><div class="row-title" data-i18n="language">Language</div></div>
+        <div class="segmented" id="langSeg" role="radiogroup" data-i18n-aria="language" aria-label="Language">
+          <button role="radio" data-lang="bg">БГ</button>
+          <button role="radio" data-lang="en">EN</button>
         </div>
       </div>
     </div>
 
-    <div class="group-title">Data</div>
+    <div class="group-title" data-i18n="data_group">Data</div>
     <div class="group">
       <button class="row row-btn" id="restoreBtn">
-        <div class="row-text"><div class="row-title">Restore point</div><div class="row-sub">Go back to an earlier version</div></div>
+        <div class="row-text"><div class="row-title" data-i18n="restore_point">Restore point</div><div class="row-sub" data-i18n="restore_sub">Go back to an earlier version</div></div>
         <span class="chev"></span>
       </button>
       <button class="row row-btn" id="exportBtn">
-        <div class="row-text"><div class="row-title">Export backup</div></div>
+        <div class="row-text"><div class="row-title" data-i18n="export_backup">Export backup</div></div>
         <span class="chev"></span>
       </button>
       <button class="row row-btn" id="importBtn">
-        <div class="row-text"><div class="row-title">Import backup</div></div>
+        <div class="row-text"><div class="row-title" data-i18n="import_backup">Import backup</div></div>
         <span class="chev"></span>
       </button>
     </div>
 
     <div class="group">
       <button class="row row-btn row-danger" id="logoutBtn">
-        <div class="row-text"><div class="row-title">Log out</div></div>
+        <div class="row-text"><div class="row-title" data-i18n="log_out">Log out</div></div>
       </button>
     </div>
     <input type="file" id="importFile" accept="application/json" style="display:none;" />
     <div class="modal-actions">
-      <button class="btn btn-primary" id="settingsClose">Done</button>
+      <button class="btn btn-primary" id="settingsClose" data-i18n="done">Done</button>
     </div>
   </div>
 </div>
@@ -210,10 +217,10 @@
 <div class="overlay" id="restoreOverlay">
   <div class="modal">
     <div class="sheet-grab"></div>
-    <h3>Restore point</h3>
+    <h3 data-i18n="restore_point">Restore point</h3>
     <div class="group restore-list" id="restoreList"></div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" id="restoreClose">Cancel</button>
+      <button class="btn btn-secondary" id="restoreClose" data-i18n="cancel">Cancel</button>
     </div>
   </div>
 </div>
@@ -224,28 +231,29 @@
     <p class="confirm-text" id="confirmText"></p>
     <div class="modal-actions modal-actions-stack">
       <button class="btn btn-primary" id="confirmOk">OK</button>
-      <button class="btn btn-secondary" id="confirmCancel">Cancel</button>
+      <button class="btn btn-secondary" id="confirmCancel" data-i18n="cancel">Cancel</button>
     </div>
   </div>
 </div>
 
 <div id="loginScreen" hidden>
+  <button type="button" class="lang-switch" id="loginLang" aria-label="Language / Език">EN</button>
   <form class="login-card" id="loginForm" novalidate>
     <div class="login-logo" id="loginIcon"></div>
     <h1 class="login-title">My Fleet</h1>
-    <p class="login-sub">Vehicles, insurance and inspections. Shared with your family.</p>
+    <p class="login-sub" data-i18n="login_sub">Vehicles, insurance and inspections. Shared with your family.</p>
     <div class="field">
-      <label for="loginEmail">Email</label>
+      <label for="loginEmail" data-i18n="email">Email</label>
       <input id="loginEmail" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" />
     </div>
     <div class="field">
-      <label for="loginPassword">Password</label>
+      <label for="loginPassword" data-i18n="password">Password</label>
       <input id="loginPassword" type="password" autocomplete="current-password" minlength="8" />
     </div>
     <div class="login-msg" id="loginMsg" role="alert"></div>
     <div class="modal-actions modal-actions-stack">
-      <button type="submit" class="btn btn-primary" id="loginBtn">Log in</button>
-      <button type="button" class="btn btn-secondary" id="registerBtn">Create account</button>
+      <button type="submit" class="btn btn-primary" id="loginBtn" data-i18n="log_in">Log in</button>
+      <button type="button" class="btn btn-secondary" id="registerBtn" data-i18n="create_account">Create account</button>
     </div>
   </form>
 </div>
@@ -253,6 +261,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="vendor/supabase.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

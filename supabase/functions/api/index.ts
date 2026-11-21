@@ -7,7 +7,7 @@
 // POST { action: "daily" } (x-cron-token header) -> the 08:00 reminder run, called by the scheduler
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateVapidKeys, sendPush, type Subscription, type VapidKeys } from "./webpush.ts";
-import { dueEvents, localNow, reminderMessage } from "./reminders.ts";
+import { dueEvents, langOf, localNow, reminderMessage, testMessage } from "./reminders.ts";
 
 const TIME_ZONE = "Europe/Sofia";
 const REMINDER_HOUR = 8;
@@ -109,8 +109,9 @@ async function test(req: Request) {
   const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
   const { data, error } = await admin.auth.getUser(jwt);
   if (error || !data?.user) return json({ error: "not_logged_in" }, 401);
+  const { data: member } = await admin.from("fleet_members").select("settings").eq("user_id", data.user.id).maybeSingle();
   const result = await pushToUser(data.user.id, {
-    title: "My Fleet", body: "Test notification: reminders reach this phone.", tag: "fleet-log-test",
+    title: "My Fleet", body: testMessage(langOf(member?.settings?.lang)), tag: "fleet-log-test",
   }, await getVapid());
   return json(result);
 }
@@ -138,7 +139,7 @@ async function daily(req: Request, body: any) {
     const lead = LEAD_DAYS.includes(Number(m.settings?.leadDays)) ? Number(m.settings.leadDays) : 30;
     const due = dueEvents(fleetData.get(m.fleet_id), today, lead);
     let result = null;
-    if (due.length) result = await pushToUser(m.user_id, { ...reminderMessage(due), tag: "fleet-log-due" }, vapid);
+    if (due.length) result = await pushToUser(m.user_id, { ...reminderMessage(due, langOf(m.settings?.lang)), tag: "fleet-log-due" }, vapid);
     // Mark the day done unless every phone failed: then the 08:20 / 08:40 runs try again.
     const delivered = !result || result.phones === 0 || result.sent > 0;
     if (delivered) await admin.from("fleet_members").update({ last_reminder_date: today }).eq("user_id", m.user_id);

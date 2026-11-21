@@ -36,12 +36,32 @@ export function dueEvents(data: unknown, todayISO: string, leadDays: number): Du
   return out.sort((a, b) => a.days - b.days);
 }
 
-export function reminderMessage(due: DueEvent[]): { title: string; body: string } {
-  const when = (d: number) => d < 0 ? `overdue ${-d}d` : d === 0 ? "today" : `${d}d left`;
-  const lines = due.slice(0, 3).map(e => `${e.vehicle}: ${e.label} (${when(e.days)})`);
-  if (due.length > 3) lines.push(`+${due.length - 3} more`);
+export type Lang = "bg" | "en";
+export const langOf = (v: unknown): Lang => (v === "en" ? "en" : "bg");   // Bulgarian unless the person chose English
+
+const TEXT = {
+  en: {
+    when: (d: number) => d < 0 ? `overdue ${-d}d` : d === 0 ? "today" : `${d}d left`,
+    more: (n: number) => `+${n} more`,
+    overdue: "My Fleet: overdue events", soon: "My Fleet: events due soon",
+    test: "Test notification: reminders reach this phone.",
+  },
+  bg: {
+    when: (d: number) => d < 0 ? `просрочено с ${-d} д.` : d === 0 ? "днес" : `остават ${d} д.`,
+    more: (n: number) => `+ още ${n}`,
+    overdue: "My Fleet: просрочени събития", soon: "My Fleet: предстоящи събития",
+    test: "Тестово известие: напомнянията стигат до този телефон.",
+  },
+};
+
+export function testMessage(lang: Lang = "bg"): string { return TEXT[lang].test; }
+
+export function reminderMessage(due: DueEvent[], lang: Lang = "bg"): { title: string; body: string } {
+  const tx = TEXT[lang];
+  const lines = due.slice(0, 3).map(e => `${e.vehicle}: ${e.label} (${tx.when(e.days)})`);
+  if (due.length > 3) lines.push(tx.more(due.length - 3));
   return {
-    title: due.some(e => e.days < 0) ? "My Fleet: overdue events" : "My Fleet: events due soon",
+    title: due.some(e => e.days < 0) ? tx.overdue : tx.soon,
     body: lines.join("\n"),
   };
 }

@@ -2,9 +2,9 @@
 const STORAGE_KEY = "fleetlog_v1";
 const SETTINGS_KEY = "fleetlog_settings_v1";
 const CATEGORIES = [
-  { key: "maintenance", label: "Maintenance" },
-  { key: "insurance", label: "Insurance" },
-  { key: "inspection", label: "Technical Inspection" }
+  { key: "maintenance", get label() { return t("cat_maintenance"); } },
+  { key: "insurance", get label() { return t("cat_insurance"); } },
+  { key: "inspection", get label() { return t("cat_inspection"); } }
 ];
 
 const CATEGORY_ICONS = {
@@ -34,12 +34,12 @@ function normalizeData(raw) {
       // attachment belonged to the removed photo/document feature: drop it
       // repeatMonths belonged to the per-event repeat setting (now: every event is yearly)
       items[c.key] = list.filter(i => i && typeof i === "object").map(({ attachment, repeatMonths, ...i }) => ({
-        ...i, id: freshId(i.id), label: str(i.label) || "Untitled", dueDate: date(i.dueDate), lastDate: date(i.lastDate),
+        ...i, id: freshId(i.id), label: str(i.label) || t("untitled"), dueDate: date(i.dueDate), lastDate: date(i.lastDate),
         notes: str(i.notes), done: i.done === true
       }));
     });
     const { photo, ...rest } = v;   // vehicle photos were removed too
-    return { ...rest, id: freshId(v.id), name: str(v.name) || "Unnamed vehicle",
+    return { ...rest, id: freshId(v.id), name: str(v.name) || t("unnamed_vehicle"),
       registration: str(v.registration), vin: str(v.vin), note: str(v.note), items };
   });
   return { vehicles };
@@ -67,14 +67,14 @@ function saveData(sync = true) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
   } catch (e) {
-    showToast("Couldn't save. Phone storage may be full");
+    showToast(t("save_failed"));
     return false;
   }
   if (sync) markDirty();
   return true;
 }
 
-const DEFAULT_SETTINGS = { notifications: false, leadDays: 30, theme: "auto" };
+const DEFAULT_SETTINGS = { notifications: false, leadDays: 30, theme: "auto", lang: "bg" };
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
@@ -105,7 +105,7 @@ function addMonthsISO(dateStr, months) {
   return localISO(t);
 }
 function formatDate(dateStr) {
-  return new Date(dateStr + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  return new Date(dateStr + "T00:00:00").toLocaleDateString(locale(), { day: "numeric", month: "short", year: "numeric" });
 }
 // A completed event (Done + Save): grayed out, never overdue, no reminders.
 function isDone(item) { return item.done === true; }
@@ -117,20 +117,6 @@ function daysUntil(dateStr) {
 }
 // "Due soon" (amber) uses the same window as the reminders: Settings > Remind me.
 function soonDays() { return [7, 14, 30].includes(state.settings.leadDays) ? state.settings.leadDays : 30; }
-function statusClass(days) {
-  if (days === null) return "badge-none";
-  if (days < 0) return "badge-red";
-  if (days <= soonDays()) return "badge-amber";
-  return "badge-green";
-}
-function humanDue(days, dateStr) {
-  if (days === null) return "No date set";
-  const formatted = formatDate(dateStr);
-  if (days < 0) return `Overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} · ${formatted}`;
-  if (days === 0) return `Due today · ${formatted}`;
-  return `Due in ${days} day${days === 1 ? "" : "s"} · ${formatted}`;
-}
-
 /* ---------------- Rendering ---------------- */
 const mainEl = document.getElementById("main");
 const toastEl = document.getElementById("toast");
@@ -214,11 +200,11 @@ ${atvWheel(51, 28.6)}
 
 
 const VEHICLE_TYPES = [
-  { key: "scooter", label: "Scooter", art: scooter },
-  { key: "motorbike", label: "Motorbike", art: motorbike },
-  { key: "atv", label: "ATV", art: atv },
-  { key: "sedan", label: "Sedan", art: sedan },
-  { key: "suv", label: "SUV", art: suv }
+  { key: "scooter", get label() { return t("type_scooter"); }, art: scooter },
+  { key: "motorbike", get label() { return t("type_motorbike"); }, art: motorbike },
+  { key: "atv", get label() { return t("type_atv"); }, art: atv },
+  { key: "sedan", get label() { return t("type_sedan"); }, art: sedan },
+  { key: "suv", get label() { return t("type_suv"); }, art: suv }
 ];
 const DEFAULT_VEHICLE_TYPE = "sedan";
 function vehicleTypeOf(vehicle) {
@@ -303,7 +289,7 @@ function performTopLevelClose() {
   // If that second press doesn't come within 2 seconds, put the sentinel back.
   if (!exitArmed) {
     exitArmed = true;
-    showToast("Press back again to exit");
+    showToast(t("press_back_exit"));
     clearTimeout(exitArmTimer);
     exitArmTimer = setTimeout(() => { if (exitArmed) restoreRootSentinel(); }, 2000);
   }
@@ -379,7 +365,7 @@ function enableDragReorder(el, container, vehicleId, onTap) {
       // A press-and-hold that ends where it started isn't a change: no save, no backup file.
       if (state.data.vehicles.map(v => v.id).join() !== oldOrder) {
         saveData();
-        showToast("Vehicle order updated");
+        showToast(t("order_updated"));
       }
     }
   }
@@ -429,16 +415,16 @@ function attentionItems() {
 }
 // Right-hand value of an event row: short, coloured by urgency.
 function dueValue(item) {
-  if (isDone(item)) return { text: "Done", cls: "v-none" };
+  if (isDone(item)) return { text: t("v_done"), cls: "v-none" };
   const days = daysUntil(item.dueDate);
-  if (days === null) return { text: "No date", cls: "v-none" };
-  if (days < 0) return { text: `${-days}d overdue`, cls: "v-red" };
-  if (days === 0) return { text: "Today", cls: "v-amber" };
-  return { text: `${days}d`, cls: days <= soonDays() ? "v-amber" : "v-green" };
+  if (days === null) return { text: t("v_no_date"), cls: "v-none" };
+  if (days < 0) return { text: t("v_overdue", { n: -days }), cls: "v-red" };
+  if (days === 0) return { text: t("v_today"), cls: "v-amber" };
+  return { text: t("v_days", { n: days }), cls: days <= soonDays() ? "v-amber" : "v-green" };
 }
 function eventSub(item) {
-  if (isDone(item)) { const on = item.lastDate || item.dueDate; return on ? `Done · ${formatDate(on)}` : "Done"; }
-  return item.dueDate ? `Due ${formatDate(item.dueDate)}` : "No due date";
+  if (isDone(item)) { const on = item.lastDate || item.dueDate; return on ? t("sub_done_on", { date: formatDate(on) }) : t("v_done"); }
+  return item.dueDate ? t("sub_due", { date: formatDate(item.dueDate) }) : t("sub_no_due");
 }
 function el(tag, cls, html) {
   const e = document.createElement(tag);
@@ -452,18 +438,22 @@ function renderHero(view) {
   const overdue = due.filter(d => d.days < 0).length, soon = due.length - overdue, lead = soonDays();
   const hero = el("button", "hero" + (due.length ? "" : " is-calm"));
   let big, sub;
-  if (overdue) { big = `${overdue} overdue`; sub = soon ? `${soon} more due in the next ${lead} days` : "Tap to see them"; }
-  else if (soon) { const n = due[0]; big = `${soon} due soon`; sub = `Next: ${escapeHtml(n.v.name)} · ${escapeHtml(n.it.label)}, ${n.days === 0 ? "today" : "in " + n.days + "d"}`; }
-  else { big = "All good"; sub = `Nothing due in the next ${lead} days`; }
+  if (overdue) { big = t("hero_overdue_big", { n: overdue }); sub = soon ? t("hero_more_soon", { n: soon, d: lead }) : t("hero_tap"); }
+  else if (soon) {
+    const n = due[0];
+    big = t("hero_soon_big", { n: soon });
+    sub = t("hero_next", { what: `${escapeHtml(n.v.name)} · ${escapeHtml(n.it.label)}`, when: n.days === 0 ? t("when_today") : t("when_in", { n: n.days }) });
+  }
+  else { big = t("hero_ok_big"); sub = t("hero_ok_sub", { d: lead }); }
   const n = state.data.vehicles.length;
   hero.innerHTML = `
-    <div class="hero-label">Needs attention</div>
+    <div class="hero-label">${t("hero_label")}</div>
     <div class="hero-big">${big}</div>
     <div class="hero-sub">${sub}</div>
     <div class="hero-pills">
-      ${overdue ? `<span class="hero-pill"><i class="p-red"></i>${overdue} overdue</span>` : ""}
-      ${soon ? `<span class="hero-pill"><i class="p-amber"></i>${soon} soon</span>` : ""}
-      <span class="hero-pill">${n} vehicle${n === 1 ? "" : "s"}</span>
+      ${overdue ? `<span class="hero-pill"><i class="p-red"></i>${t("pill_overdue", { n: overdue })}</span>` : ""}
+      ${soon ? `<span class="hero-pill"><i class="p-amber"></i>${t("pill_soon", { n: soon })}</span>` : ""}
+      <span class="hero-pill">${t("pill_vehicles", { n })}</span>
     </div>`;
   if (due.length) hero.onclick = () => openAttention();
   else hero.tabIndex = -1;
@@ -475,17 +465,17 @@ function renderHome(view) {
   if (state.data.vehicles.length === 0) {
     const empty = el("div", "empty-state", `
       <div class="empty-icon">${vehicleIconSvg("sedan")}</div>
-      <div class="empty-title">No vehicles yet</div>
-      <div class="empty-copy">Add your first vehicle to keep maintenance, insurance and inspection dates in one place.</div>
-      <button class="btn btn-primary" id="emptyAddVehicle">Add a vehicle</button>`);
+      <div class="empty-title">${t("empty_title")}</div>
+      <div class="empty-copy">${t("empty_copy")}</div>
+      <button class="btn btn-primary" id="emptyAddVehicle">${t("empty_btn")}</button>`);
     view.appendChild(empty);
     empty.querySelector("#emptyAddVehicle").onclick = () => openVehicleModal();
     return;
   }
   renderHero(view);
-  const head = el("div", "section-title", "<span>Vehicles</span>");
-  const add = el("button", "pill-btn", "+ Add");
-  add.setAttribute("aria-label", "Add vehicle");
+  const head = el("div", "section-title", `<span>${t("vehicles")}</span>`);
+  const add = el("button", "pill-btn", t("add_short"));
+  add.setAttribute("aria-label", t("add_vehicle"));
   add.onclick = () => openVehicleModal();
   head.appendChild(add);
   view.appendChild(head);
@@ -495,7 +485,7 @@ function renderHome(view) {
       <div class="avatar">${vehicleIconSvg(vehicleTypeOf(v))}</div>
       <div class="row-text">
         <div class="row-title">${escapeHtml(v.name)}</div>
-        <div class="row-sub">${v.registration ? escapeHtml(v.registration) : "No registration"}</div>
+        <div class="row-sub">${v.registration ? escapeHtml(v.registration) : t("no_reg")}</div>
       </div>
       ${statusCountBadgeHTML(v)}
       <span class="chev"></span>`);
@@ -513,29 +503,29 @@ function renderVehiclePage(view, vehicle) {
   view.appendChild(el("div", "vehicle-hero", `
     <div class="big-avatar">${vehicleIconSvg(vehicleTypeOf(vehicle))}</div>
     <div class="vh-name">${escapeHtml(vehicle.name)}</div>
-    <div class="vh-sub">${vehicle.registration ? escapeHtml(vehicle.registration) : "No registration"}</div>`));
+    <div class="vh-sub">${vehicle.registration ? escapeHtml(vehicle.registration) : t("no_reg")}</div>`));
 
   const actions = el("div", "actions");
-  const addAct = el("button", "action primary", `<span class="action-circle">${UI_ICONS.plus}</span>Add event`);
+  const addAct = el("button", "action primary", `<span class="action-circle">${UI_ICONS.plus}</span>${t("add_event")}`);
   addAct.onclick = () => openCategoryPicker();
-  const editAct = el("button", "action", `<span class="action-circle">${UI_ICONS.edit}</span>Edit`);
-  editAct.setAttribute("aria-label", "Edit vehicle");
+  const editAct = el("button", "action", `<span class="action-circle">${UI_ICONS.edit}</span>${t("edit")}`);
+  editAct.setAttribute("aria-label", t("edit_vehicle"));
   editAct.onclick = () => openVehicleEditModal(vehicle.id);
   actions.append(addAct, editAct);
   view.appendChild(actions);
 
   if (vehicle.vin || vehicle.note) {
     const details = el("div", "group details");
-    if (vehicle.vin) details.appendChild(el("div", "row", `<div class="row-text"><div class="row-title">VIN</div><div class="row-sub">${escapeHtml(vehicle.vin)}</div></div>`));
-    if (vehicle.note) details.appendChild(el("div", "row", `<div class="row-text"><div class="row-title">Note</div><div class="row-sub">${escapeHtml(vehicle.note)}</div></div>`));
+    if (vehicle.vin) details.appendChild(el("div", "row", `<div class="row-text"><div class="row-title">${t("vin")}</div><div class="row-sub">${escapeHtml(vehicle.vin)}</div></div>`));
+    if (vehicle.note) details.appendChild(el("div", "row", `<div class="row-text"><div class="row-title">${t("note")}</div><div class="row-sub">${escapeHtml(vehicle.note)}</div></div>`));
     view.appendChild(details);
   }
 
   CATEGORIES.forEach(cat => {
     const head = el("div", "section-title", `<span class="title-with-icon"><span class="cat-dot avatar ${CATEGORY_AVATAR[cat.key]}">${CATEGORY_ICONS[cat.key]}</span>${cat.label}</span>`);
-    const add = el("button", "pill-btn", "+ Add");
-    add.setAttribute("aria-label", "Add to " + cat.label);
-    add.title = "Add to " + cat.label;
+    const add = el("button", "pill-btn", t("add_short"));
+    add.setAttribute("aria-label", t("add_to", { cat: cat.label }));
+    add.title = t("add_to", { cat: cat.label });
     add.onclick = () => openItemModal(vehicle.id, cat.key, null);
     head.appendChild(add);
     view.appendChild(head);
@@ -548,7 +538,7 @@ function renderVehiclePage(view, vehicle) {
       if (da === null) return 1; if (db === null) return -1;
       return isDone(a) ? db - da : da - db;                              // finished: newest first
     });
-    if (!items.length) group.appendChild(el("div", "row-empty", `No ${cat.label.toLowerCase()} events yet`));
+    if (!items.length) group.appendChild(el("div", "row-empty", t("no_events", { cat: cat.label })));
     items.forEach(item => {
       const val = dueValue(item);
       const row = el("div", "row tappable" + (isDone(item) ? " is-done" : ""), `
@@ -590,7 +580,7 @@ function updateAppbar() {
   const vehicle = state.data.vehicles.find(v => v.id === state.activeVehicleId);
   document.getElementById("settingsBtn").hidden = !!vehicle;
   backBtn.hidden = !vehicle;
-  document.getElementById("appbarTitle").textContent = vehicle ? vehicle.name : "My Fleet";
+  document.getElementById("appbarTitle").textContent = vehicle ? vehicle.name : "My Fleet";   // the app's name is the same in both languages
 }
 window.addEventListener("scroll", () => appbarEl.classList.toggle("scrolled", window.scrollY > 48), { passive: true });
 
@@ -680,7 +670,7 @@ let formDone = false;
 function syncItemForm() {
   itemStateRow.style.display = state.editing && state.editing.itemId ? "flex" : "none";
   itemDoneBtn.setAttribute("aria-pressed", formDone ? "true" : "false");
-  itemDoneBtn.textContent = formDone ? "\u2713 Done" : "Done";
+  itemDoneBtn.textContent = formDone ? t("done_btn_on") : t("done_btn");
 }
 // Every event repeats yearly: entering Last done fills Next due one year later.
 itemLast.addEventListener("change", () => {
@@ -698,7 +688,7 @@ function openItemModal(vehicleId, category, itemId, replace) {
   state.editing = { vehicleId, category, itemId };
   const vehicle = state.data.vehicles.find(v => v.id === vehicleId);
   const item = itemId ? vehicle.items[category].find(i => i.id === itemId) : null;
-  itemModalTitle.textContent = item ? "Edit event" : "Add event";
+  itemModalTitle.textContent = item ? t("edit_event_title") : t("add_event_title");
   itemLabel.value = item ? item.label : "";
   itemLast.value = item ? item.lastDate || "" : "";
   itemDue.value = item ? item.dueDate || "" : "";
@@ -717,8 +707,8 @@ function saveItemForm() {
   const { vehicleId, category, itemId } = state.editing;
   const vehicle = state.data.vehicles.find(v => v.id === vehicleId);
   const target = vehicle && itemId ? vehicle.items[category].find(i => i.id === itemId) : null;
-  if (!vehicle || (itemId && !target)) { showToast("This was deleted on another phone"); goToRoot(); return; }
-  if (!itemLabel.value.trim()) { showToast("Please enter a name"); return; }
+  if (!vehicle || (itemId && !target)) { showToast(t("deleted_elsewhere")); goToRoot(); return; }
+  if (!itemLabel.value.trim()) { showToast(t("enter_name")); return; }
   const fields = {
     label: itemLabel.value.trim(),
     lastDate: itemLast.value || null,
@@ -738,8 +728,8 @@ document.getElementById("itemDelete").onclick = async () => {
   const { vehicleId, category, itemId } = state.editing;
   const vehicle = state.data.vehicles.find(v => v.id === vehicleId);
   const item = vehicle && vehicle.items[category].find(i => i.id === itemId);
-  if (!item) { showToast("This was deleted on another phone"); goToRoot(); return; }
-  if (!(await askConfirm({ title: `Delete "${item.label}"?`, text: "You can get it back from Settings > Restore point.", ok: "Delete", danger: true }))) return;
+  if (!item) { showToast(t("deleted_elsewhere")); goToRoot(); return; }
+  if (!(await askConfirm({ title: t("delete_q", { name: item.label }), text: t("restore_hint"), ok: t("delete"), danger: true }))) return;
   if (!itemOverlay.classList.contains("open") || !vehicle.items[category].includes(item)) return;
   vehicle.items[category] = vehicle.items[category].filter(i => i.id !== itemId);
   saveData();
@@ -795,7 +785,7 @@ function renderTypePicker() {
 function openVehicleModal() {
   editingVehicleId = null;
   selectedVehicleType = DEFAULT_VEHICLE_TYPE;
-  vehicleModalTitle.textContent = "Add vehicle";
+  vehicleModalTitle.textContent = t("add_vehicle_title");
   vehicleDeleteRow.style.display = "none";
   document.getElementById("vehicleName").value = "";
   document.getElementById("vehicleReg").value = "";
@@ -811,7 +801,7 @@ function openVehicleEditModal(vehicleId) {
   if (!v) return;
   editingVehicleId = vehicleId;
   selectedVehicleType = vehicleTypeOf(v);
-  vehicleModalTitle.textContent = "Edit vehicle";
+  vehicleModalTitle.textContent = t("edit_vehicle_title");
   vehicleDeleteRow.style.display = "flex";
   document.getElementById("vehicleName").value = v.name;
   document.getElementById("vehicleReg").value = v.registration || "";
@@ -828,10 +818,10 @@ document.getElementById("vehicleSave").onclick = () => {
   const registration = document.getElementById("vehicleReg").value.trim();
   const vin = document.getElementById("vehicleVin").value.trim().toUpperCase();
   const note = document.getElementById("vehicleNote").value.trim();
-  if (!name) { showToast("Please enter a vehicle name"); return; }
+  if (!name) { showToast(t("enter_vehicle_name")); return; }
   if (editingVehicleId) {
     const v = state.data.vehicles.find(x => x.id === editingVehicleId);
-    if (!v) { showToast("This vehicle was deleted on another phone"); goToRoot(); return; }
+    if (!v) { showToast(t("vehicle_deleted_elsewhere")); goToRoot(); return; }
     v.name = name;
     v.type = selectedVehicleType;
     v.registration = registration;
@@ -839,7 +829,7 @@ document.getElementById("vehicleSave").onclick = () => {
     v.note = note;
     saveData();
     render();
-    showToast("Vehicle updated");
+    showToast(t("vehicle_updated"));
     closeNav();
   } else {
     const wasAtRoot = !state.activeVehicleId;
@@ -860,12 +850,12 @@ document.getElementById("vehicleDelete").onclick = async () => {
   if (navClosing || !editingVehicleId || !vehicleOverlay.classList.contains("open")) return;
   const v = state.data.vehicles.find(x => x.id === editingVehicleId);
   if (!v) return;
-  if (!(await askConfirm({ title: `Delete "${v.name}"?`, text: "All its events go too. You can get them back from Settings > Restore point.", ok: "Delete", danger: true }))) return;
+  if (!(await askConfirm({ title: t("delete_q", { name: v.name }), text: t("delete_vehicle_hint"), ok: t("delete"), danger: true }))) return;
   if (!vehicleOverlay.classList.contains("open") || !state.data.vehicles.includes(v)) return;
   state.data.vehicles = state.data.vehicles.filter(x => x.id !== editingVehicleId);
   saveData();
   goToRoot();                       // the vehicle you were on is gone: back to the home page
-  showToast("Vehicle deleted");
+  showToast(t("vehicle_deleted"));
 };
 
 /* ---------------- Cloud account & sync ----------------
@@ -1006,8 +996,8 @@ async function firstSync(user) {
       const known = new Set(remote.vehicles.map(v => v.id));
       const extra = local.vehicles.filter(v => !known.has(v.id));
       if (extra.length && await askConfirm({
-        title: `Add ${extra.length} vehicle${extra.length === 1 ? "" : "s"} from this phone?`,
-        text: `This phone has ${extra.length === 1 ? "a vehicle that isn't" : "vehicles that aren't"} in the account yet.`, ok: "Add to account" })) {
+        title: t("add_from_phone_title", { n: extra.length }),
+        text: t("add_from_phone_text", { n: extra.length }), ok: t("add_to_account") })) {
         result = { vehicles: [...remote.vehicles, ...extra] };
         upload = true;
       }
@@ -1025,7 +1015,7 @@ async function firstSync(user) {
 
 function updateAccountInfo() {
   const waiting = !!sync.userId && !!sync.dirty && (syncFailed || !navigator.onLine);
-  const status = !sync.userId ? "Not logged in" : sync.dirty ? (waiting ? "Changes wait for internet" : "Saving…") : "All changes saved";
+  const status = !sync.userId ? t("st_not_logged") : sync.dirty ? (waiting ? t("st_wait") : t("st_saving")) : t("st_saved");
   const initial = sync.email ? sync.email.trim()[0].toUpperCase() : "·";
   document.getElementById("accountInfo").textContent = status;
   document.getElementById("accountEmail").textContent = sync.email || "";
@@ -1064,41 +1054,41 @@ function sayLogin(text, ok) {
   loginMsg.className = ok ? "login-msg ok" : "login-msg";
 }
 const REGISTER_ERRORS = {
-  invalid_email: () => "That email doesn't look right",
-  weak_password: () => "The password needs at least 8 characters",
-  not_allowed: () => "This email isn't on the invite list",
-  join_first: r => `${r.join} needs to create an account first`,
-  already_registered: () => "This email already has an account. Log in instead"
+  invalid_email: () => t("err_invalid_email"),
+  weak_password: () => t("err_weak_password"),
+  not_allowed: () => t("err_not_allowed"),
+  join_first: r => t("err_join_first", { email: r.join }),
+  already_registered: () => t("err_already")
 };
 let loginBusy = false;
 async function doLogin(register) {
   if (loginBusy) return;
-  if (!sb) { sayLogin("The app didn't load fully. Check the internet and reopen it"); return; }
+  if (!sb) { sayLogin(t("err_not_loaded")); return; }
   const email = loginEmail.value.trim().toLowerCase();
   const password = loginPassword.value;
-  if (!email || !password) { sayLogin("Enter your email and password"); return; }
+  if (!email || !password) { sayLogin(t("enter_credentials")); return; }
   loginBusy = true;
   document.querySelectorAll("#loginForm button").forEach(b => b.disabled = true);
-  sayLogin(register ? "Creating account…" : "Logging in…", true);
+  sayLogin(register ? t("creating") : t("logging_in"), true);
   try {
     if (register) {
       const r = await api("register", { email, password });
-      if (r.error) { sayLogin((REGISTER_ERRORS[r.error] || (() => "Something went wrong. Try again later"))(r)); return; }
+      if (r.error) { sayLogin((REGISTER_ERRORS[r.error] || (() => t("err_generic")))(r)); return; }
     }
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if (error || !data.session) {
-      sayLogin(error && /invalid/i.test(error.message) ? "Wrong email or password" : "Couldn't log in. Check the internet and try again");
+      sayLogin(error && /invalid/i.test(error.message) ? t("wrong_credentials") : t("login_failed"));
       return;
     }
-    sayLogin("Loading your data…", true);
+    sayLogin(t("loading_data"), true);
     if (sync.userId === data.user.id) { sync.email = data.user.email; saveSync(); syncNow(); }
-    else if (!(await firstSync(data.user))) { sayLogin("Couldn't load your data. Check the internet and try again"); return; }
+    else if (!(await firstSync(data.user))) { sayLogin(t("load_failed")); return; }
     loginScreen.hidden = true;
     loginPassword.value = "";
-    showToast(register ? "Account created" : "Logged in");
+    showToast(register ? t("account_created") : t("logged_in"));
     afterLogin();
   } catch (e) {
-    sayLogin("Couldn't reach the server. Check the internet and try again");
+    sayLogin(t("server_unreachable"));
   } finally {
     loginBusy = false;
     document.querySelectorAll("#loginForm button").forEach(b => b.disabled = false);
@@ -1136,20 +1126,21 @@ async function loadMemberSettings() {
     if (!data) return;
     const lead = Number(data.settings && data.settings.leadDays);
     if ([7, 14, 30].includes(lead)) { if (lead !== state.settings.leadDays) { state.settings.leadDays = lead; saveSettings(); render(); } }
-    else saveMemberSettings();
+    // The server writes reminders in the language this phone uses.
+    if (![7, 14, 30].includes(lead) || !data.settings || data.settings.lang !== LANG) saveMemberSettings();
   } catch (e) {}
 }
 async function saveMemberSettings() {
   if (!sb || !sync.userId) return;
-  try { await sb.from("fleet_members").update({ settings: { leadDays: state.settings.leadDays } }).eq("user_id", sync.userId); } catch (e) {}
+  try { await sb.from("fleet_members").update({ settings: { leadDays: state.settings.leadDays, lang: LANG } }).eq("user_id", sync.userId); } catch (e) {}
 }
 
 let loggingOut = false;
 document.getElementById("logoutBtn").onclick = async () => {
   const msg = sync.dirty
-    ? "Some changes haven't reached the account yet and will be lost."
-    : "Your data stays in the account.";
-  if (!(await askConfirm({ title: "Log out?", text: msg, ok: "Log out", danger: true }))) return;
+    ? t("logout_unsynced")
+    : t("logout_safe");
+  if (!(await askConfirm({ title: t("logout_q"), text: msg, ok: t("log_out"), danger: true }))) return;
   loggingOut = true;
   try { await withTimeout(unsubscribePush(), 6000); } catch (e) {}
   try { await sb.auth.signOut({ scope: "local" }); } catch (e) {}
@@ -1158,7 +1149,7 @@ document.getElementById("logoutBtn").onclick = async () => {
   saveSync();
   state.data = { vehicles: [] };
   saveData(false);
-  state.settings = { ...DEFAULT_SETTINGS, theme: state.settings.theme };   // the theme belongs to the phone
+  state.settings = { ...DEFAULT_SETTINGS, theme: state.settings.theme, lang: state.settings.lang };   // theme and language belong to the phone
   saveSettings();
   loggingOut = false;
   goToRoot();
@@ -1241,13 +1232,33 @@ document.querySelectorAll("#themeSeg button").forEach(b => {
 if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener("change", applyTheme);
 applyTheme();
 
+/* ---------------- Language: Bulgarian (default) / English ---------------- */
+function setLanguage(lang) {
+  if (!LANGS.includes(lang)) return;
+  LANG = lang;
+  state.settings.lang = lang;
+  saveSettings();
+  applyLanguage();
+  saveMemberSettings();
+}
+function applyLanguage() {
+  applyStaticText();
+  document.querySelectorAll("#langSeg button").forEach(b => b.setAttribute("aria-checked", b.dataset.lang === LANG ? "true" : "false"));
+  document.getElementById("loginLang").textContent = LANG === "bg" ? "EN" : "БГ";
+  if (itemOverlay.classList.contains("open")) syncItemForm();
+  render();
+  updateAccountInfo();
+}
+document.querySelectorAll("#langSeg button").forEach(b => { b.onclick = () => setLanguage(b.dataset.lang); });
+document.getElementById("loginLang").onclick = () => setLanguage(LANG === "bg" ? "en" : "bg");
+
 notifToggle.onchange = async () => {
   const on = notifToggle.checked;
   notifToggle.disabled = true;
   try {
     if (on) {
       await subscribePush(true);
-      showToast("Reminders on: every day at 08:00");
+      showToast(t("reminders_on"));
     } else {
       await unsubscribePush();
     }
@@ -1256,9 +1267,7 @@ notifToggle.onchange = async () => {
   } catch (err) {
     notifToggle.checked = !on;
     const m = err && err.message;
-    showToast(m === "unsupported" ? "Notifications aren't supported here. On iPhone, add the app to the Home Screen first"
-      : m === "denied" ? "Notifications are blocked for this app in the phone's settings"
-      : "Couldn't change notifications. Check the internet");
+    showToast(m === "unsupported" ? t("notif_unsupported") : m === "denied" ? t("notif_denied") : t("notif_failed"));
   } finally {
     notifToggle.disabled = false;
   }
@@ -1271,18 +1280,18 @@ document.getElementById("leadDays").onchange = (e) => {
 };
 document.getElementById("testNotifBtn").onclick = async (e) => {
   const btn = e.currentTarget;
-  if (!state.settings.notifications) { showToast("Turn on reminder notifications first"); return; }
+  if (!state.settings.notifications) { showToast(t("notif_first")); return; }
   btn.disabled = true;
   try {
     const token = await accessToken();
-    if (!token) { showToast("Connect to the internet and try again"); return; }
+    if (!token) { showToast(t("connect")); return; }
     const r = await api("test", {}, token);
-    if (r.error) showToast("Couldn't send. Try again later");
-    else if (!r.phones) showToast("This phone isn't signed up. Turn notifications off and on again");
-    else if (r.sent) showToast(`Sent to ${r.sent} phone${r.sent === 1 ? "" : "s"}. Check your notifications`);
-    else showToast("Couldn't deliver. Turn notifications off and on again");
+    if (r.error) showToast(t("send_failed"));
+    else if (!r.phones) showToast(t("not_signed_up"));
+    else if (r.sent) showToast(t("sent_to", { n: r.sent }));
+    else showToast(t("deliver_failed"));
   } catch (err) {
-    showToast("Connect to the internet and try again");
+    showToast(t("connect"));
   } finally {
     btn.disabled = false;
   }
@@ -1309,7 +1318,7 @@ function backupFileName() {
 function performBackupExport() {
   const payload = JSON.stringify({ vehicles: state.data.vehicles });
   downloadFile(new Blob([payload], { type: "application/json" }), backupFileName());
-  showToast("Backup exported");
+  showToast(t("exported"));
 }
 
 document.getElementById("exportBtn").onclick = () => performBackupExport();
@@ -1322,33 +1331,33 @@ document.getElementById("importFile").onchange = (e) => {
   reader.onload = async () => {
     let data = null;
     try { data = normalizeData(JSON.parse(reader.result)); } catch (err) {}
-    if (!data) { showToast("That file isn't a My Fleet backup"); return; }
+    if (!data) { showToast(t("not_backup")); return; }
     const n = data.vehicles.length;
-    if (!(await askConfirm({ title: "Replace everything?", text: `The app will contain only this backup (${n} vehicle${n === 1 ? "" : "s"}).`, ok: "Replace", danger: true }))) return;
+    if (!(await askConfirm({ title: t("replace_q"), text: t("replace_text", { n }), ok: t("replace"), danger: true }))) return;
     state.data = data;
     if (!saveData()) return;
     goToRoot();
-    showToast("Backup imported");
+    showToast(t("imported"));
   };
-  reader.onerror = () => showToast("Couldn't open that file");
+  reader.onerror = () => showToast(t("open_failed"));
   reader.readAsText(file);
 };
 
 /* ---------------- Restore list ----------------
    The account keeps the last 30 versions of the data (one per saved change), off the phone. */
 const restoreOverlay = document.getElementById("restoreOverlay");
-function restoreLabel(t) {
-  const d = new Date(t);
-  const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+function restoreLabel(ts) {
+  const d = new Date(ts);
+  const time = d.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
   const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-  if (localISO(d) === localISO()) return `Today ${time}`;
-  if (localISO(d) === localISO(yesterday)) return `Yesterday ${time}`;
-  return `${d.toLocaleDateString(undefined, { day: "numeric", month: "short" })} ${time}`;
+  if (localISO(d) === localISO()) return t("today_at", { time });
+  if (localISO(d) === localISO(yesterday)) return t("yesterday_at", { time });
+  return `${d.toLocaleDateString(locale(), { day: "numeric", month: "short" })} ${time}`;
 }
 function restoreSummary(data) {
   const vs = (data && data.vehicles) || [];
   const ev = vs.reduce((n, v) => n + CATEGORIES.reduce((m, c) => m + ((v.items && v.items[c.key]) || []).length, 0), 0);
-  return `${vs.length} vehicle${vs.length === 1 ? "" : "s"} · ${ev} event${ev === 1 ? "" : "s"}`;
+  return t("summary", { v: vs.length, e: ev });
 }
 let restoreLoading = false;
 document.getElementById("restoreBtn").onclick = async () => {
@@ -1360,25 +1369,25 @@ document.getElementById("restoreBtn").onclick = async () => {
     if (!error) points = data;
   } catch (e) {}
   restoreLoading = false;
-  if (!points) { showToast("Restore points need internet"); return; }
-  if (!points.length) { showToast("No restore points yet"); return; }
+  if (!points) { showToast(t("restore_need_net")); return; }
+  if (!points.length) { showToast(t("no_restore")); return; }
   if (!settingsOverlay.classList.contains("open")) return;   // closed while loading
   const list = document.getElementById("restoreList");
   list.innerHTML = "";
   points.forEach(p => {
     const data = normalizeData(p.data);
-    const t = Date.parse(p.created_at);
+    const at = Date.parse(p.created_at);
     const isNow = !!data && same(data, state.data);
     const btn = document.createElement("button");
     btn.className = "row row-btn restore-item";
     btn.disabled = isNow || !data;
-    btn.innerHTML = `<div class="row-text"><div class="row-title">${restoreLabel(t)}${isNow ? " · now" : ""}</div><div class="row-sub">${restoreSummary(data)}</div></div>${isNow ? "" : '<span class="chev"></span>'}`;
+    btn.innerHTML = `<div class="row-text"><div class="row-title">${restoreLabel(at)}${isNow ? t("now_suffix") : ""}</div><div class="row-sub">${restoreSummary(data)}</div></div>${isNow ? "" : '<span class="chev"></span>'}`;
     btn.onclick = async () => {
-      if (!(await askConfirm({ title: `Go back to ${restoreLabel(t)}?`, text: "Changes made after it will be replaced. This step can be undone from the same list.", ok: "Restore" }))) return;
+      if (!(await askConfirm({ title: t("restore_q", { when: restoreLabel(at) }), text: t("restore_text"), ok: t("restore") }))) return;
       state.data = data;
       if (!saveData()) return;          // the restored data becomes the newest version in the account
       goToRoot();
-      showToast(`Restored to ${restoreLabel(t)}`);
+      showToast(t("restored_to", { when: restoreLabel(at) }));
     };
     list.appendChild(btn);
   });
@@ -1405,10 +1414,10 @@ window.addEventListener("online", () => syncNow());
 setInterval(() => { if (document.visibilityState === "visible" && sync.dirty) syncNow(); }, 60000);
 
 async function startAccount() {
-  if (!sb) { if (!sync.userId) showLogin("The app didn't load fully. Check the internet and reopen it"); return; }
+  if (!sb) { if (!sync.userId) showLogin(t("err_not_loaded")); return; }
   sb.auth.onAuthStateChange((event, session) => {
     setTimeout(() => {   // never call the account library from inside its own callback
-      if (event === "SIGNED_OUT" && sync.userId && !loggingOut) showLogin("Please log in again");
+      if (event === "SIGNED_OUT" && sync.userId && !loggingOut) showLogin(t("login_again"));
       if (event === "TOKEN_REFRESHED" && session && session.user.id === sync.userId && sync.dirty) syncNow();
     }, 0);
   });
@@ -1419,16 +1428,15 @@ async function startAccount() {
   if (session && session.user.id === sync.userId) { syncNow(); afterLogin(); }
   else if (session) {
     if (await firstSync(session.user)) afterLogin();
-    else showLogin("Couldn't load your data. Check the internet and log in");
+    else showLogin(t("load_failed_login"));
   }
   else if (!(savedLogin && sync.userId)) showLogin();   // a saved login without internet keeps working offline
 }
 
 /* ---------------- Init ---------------- */
-render();
-updateAccountInfo();
+applyLanguage();   // fills the page text and draws the first screen
 restoreRootSentinel(); // root sentinel, so the first back press on the home page can be caught
-if (dataLoadProblem) showToast("Saved data couldn't be read. Import a backup to restore");
+if (dataLoadProblem) showToast(t("data_unreadable"));
 // One-time cleanup of the removed photo/document feature: save the data without the old
 // references, and delete the storage area that held the files themselves.
 if (hadLegacyFields) saveData(false);

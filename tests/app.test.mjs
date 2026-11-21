@@ -9,6 +9,7 @@ const read = p => fs.readFileSync(new URL(p, root), "utf8");
 const html = read("index.html")
   .replace('<link rel="stylesheet" href="css/app.css" />', () => `<style>${read("css/app.css")}</style>`)
   .replace('<script src="vendor/supabase.js"></script>', "")
+  .replace('<script src="js/i18n.js"></script>', () => `<script>${read("js/i18n.js")}</script>`)
   .replace('<script src="js/app.js"></script>', () => `<script>${read("js/app.js")}</script>`);
 const wait = (ms = 0) => new Promise(r => setTimeout(r, ms));
 let pass = 0, fail = 0;
@@ -108,6 +109,7 @@ function phone(localData, opts = {}) {
   const dom = new JSDOM(html, {
     url: "https://ttomov88.github.io/fleet-log/", runScripts: "dangerously", pretendToBeVisual: true,
     beforeParse(win) {
+      win.localStorage.setItem("fleetlog_settings_v1", JSON.stringify({ lang: opts.lang || "en" }));   // tests read English text
       if (localData) win.localStorage.setItem("fleetlog_v1", JSON.stringify(localData));
       if (opts.session) win.localStorage.setItem("fleetlog_auth", JSON.stringify(opts.session));
       if (opts.sync) win.localStorage.setItem("fleetlog_sync_v1", JSON.stringify(opts.sync));
@@ -301,6 +303,38 @@ console.log("Redesign");
   D.document.querySelector('#themeSeg [data-theme="auto"]').click();
   ok(!D.document.documentElement.dataset.theme, "auto follows the phone");
   ok($(D, "avatarInitial").textContent === "N", "avatar shows the account initial");
+}
+
+console.log("Bulgarian");
+{
+  const G = phone({ vehicles: [veh("g1", "Голф", { insurance: [ev("y1", "Каско", "2020-01-01")] })] }, { lang: "bg" });
+  await wait(20);
+  ok($(G, "loginBtn").textContent === "Вход" && $(G, "registerBtn").textContent === "Създай профил" && G.document.documentElement.lang === "bg", "login screen in Bulgarian");
+  await login(G, "ttomov88@gmail.com", "wrong-pass");
+  ok($(G, "loginMsg").textContent === "Грешен имейл или парола", "errors in Bulgarian");
+  $(G, "loginLang").click();
+  ok($(G, "loginBtn").textContent === "Log in", "login screen can switch to English");
+  $(G, "loginLang").click();
+  const fresh = phone({ vehicles: [veh("g1", "Голф", { insurance: [ev("y1", "Каско", "2020-01-01")] })] });
+  fresh.localStorage.removeItem("fleetlog_settings_v1");
+  await wait(10);
+  const H = phone({ vehicles: [veh("g1", "Голф", { insurance: [ev("y1", "Каско", "2020-01-01")] })] }, { lang: "bg" });
+  await wait(20);
+  await login(H, "fam@x.com", "secret123"); await wait(50);
+  const hero = H.document.querySelector(".hero-big");
+  ok(hero && /просроч/.test(hero.textContent), "home summary in Bulgarian", hero && hero.textContent);
+  H.eval(`document.getElementById("settingsBtn").click()`);
+  ok(H.document.querySelector('[data-i18n="notifications"]').textContent === "Известия", "settings in Bulgarian");
+  ok(server.members["u-fam"] && server.members["u-fam"].lang === "bg", "server told to write reminders in Bulgarian");
+  H.document.querySelector('#langSeg [data-lang="en"]').click(); await wait(20);
+  ok(H.document.querySelector('[data-i18n="notifications"]').textContent === "Notifications" && server.members["u-fam"].lang === "en", "switching to English changes the app and the reminders");
+}
+{
+  // A brand-new phone with nothing saved starts in Bulgarian.
+  const dom = new JSDOM(html, { url: "https://ttomov88.github.io/my-fleet/", runScripts: "dangerously", pretendToBeVisual: true,
+    beforeParse(win) { win.supabase = { createClient: () => makeClient(win) }; win.fetch = fakeFetch; win.matchMedia = () => ({ matches: false, addEventListener() {} }); win.scrollTo = () => {}; } });
+  await wait(20);
+  ok(dom.window.document.getElementById("loginBtn").textContent === "Вход", "Bulgarian is the default");
 }
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
