@@ -109,15 +109,13 @@
       <label for="vehicleName" data-i18n="name">Name</label>
       <input id="vehicleName" autocomplete="off" />
     </div>
-    <div class="field-row">
-      <div class="field">
-        <label for="vehicleReg" data-i18n="registration">Registration</label>
-        <input id="vehicleReg" autocomplete="off" />
-      </div>
-      <div class="field">
-        <label for="vehicleVin" data-i18n="vin">VIN</label>
-        <input id="vehicleVin" autocomplete="off" style="text-transform:uppercase;" />
-      </div>
+    <div class="field">
+      <label for="vehicleReg" data-i18n="registration">Registration</label>
+      <input id="vehicleReg" autocomplete="off" />
+    </div>
+    <div class="field">
+      <label for="vehicleVin" data-i18n="vin">VIN</label>
+      <input id="vehicleVin" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20" style="text-transform:uppercase; letter-spacing:0.3px;" />
     </div>
     <div class="field">
       <label for="vehicleNote" data-i18n="note_optional">Note (optional)</label>

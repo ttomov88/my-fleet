@@ -132,72 +132,28 @@ function showToast(msg) {
 /* ---------------- Vehicle type icons ----------------
    Predesigned side-profile silhouettes (viewBox 0 0 64 40, drawn in currentColor).
    Vehicles without a saved type fall back to the sedan. */
-// Inner SVG markup for each vehicle type. viewBox is 0 0 64 40; everything uses currentColor.
-const iconRing = (cx, cy, r, hub) => `M${cx - r} ${cy} a${r} ${r} 0 1 0 ${2 * r} 0 a${r} ${r} 0 1 0 ${-2 * r} 0 Z M${cx - hub} ${cy} a${hub} ${hub} 0 1 0 ${2 * hub} 0 a${hub} ${hub} 0 1 0 ${-2 * hub} 0 Z`;
+// Inner SVG markup for each vehicle type (viewBox 0 0 64 40, drawn in currentColor).
+// Simple filled side views; every vehicle uses the same wheel style.
+const sedan = `<path fill-rule="evenodd" d="M4 29V23q0-3.6 3.6-4.2L17 17.4 23.2 10.4Q24.4 9 26.2 9H39q1.8 0 3 1.3l6.6 7 7.8 1.6Q60 19.6 60 23v6h-3.5a8.5 8.5 0 0 0-17 0H24.5a8.5 8.5 0 0 0-17 0Z
+M20.6 17l4.2-5q.5-.6 1.3-.6h4.4V17ZM33 11.4h5.6q.8 0 1.3.5l5 5.1H33Z"/><path fill-rule="evenodd" d="M10 29a6 6 0 1 0 12 0a6 6 0 1 0 -12 0ZM13.72 29a2.28 2.28 0 1 0 4.56 0a2.28 2.28 0 1 0 -4.56 0Z"/><path fill-rule="evenodd" d="M42 29a6 6 0 1 0 12 0a6 6 0 1 0 -12 0ZM45.72 29a2.28 2.28 0 1 0 4.56 0a2.28 2.28 0 1 0 -4.56 0Z"/>`;
 
-const sedan = `
-<path fill-rule="evenodd" d="M3 29 L3 22 Q3 19.4 5.6 18.9 L16 17.2 L22.2 9.4 Q23.3 8 25 8 L38.5 8 Q40.2 8 41.4 9.2 L49.6 17.6 L58.4 19.6 Q61.5 20.4 61.5 24 L61.5 29 L57 29 A8 8 0 0 0 41 29 L23 29 A8 8 0 0 0 7 29 Z
-M19.4 16.4 L24 10.6 Q24.5 10 25.3 10 L30.2 10 L30.2 16.4 Z
-M32.8 10 L38 10 Q38.8 10 39.4 10.6 L45.2 16.4 L32.8 16.4 Z"/>
-<path fill-rule="evenodd" d="${iconRing(15, 29, 6, 2.2)}"/>
-<path fill-rule="evenodd" d="${iconRing(49, 29, 6, 2.2)}"/>`;
+const suv = `<path fill-rule="evenodd" d="M3.5 29V13q0-5.5 5.5-5.5h26.6q2 0 3.3 1.5L45 16.2l11.6 1.6Q61 18.4 61 22.4V29h-3.5a9 9 0 0 0-18 0H24.5a9 9 0 0 0-18 0Z
+M8.5 15.6v-3.3q0-2 2-2H20v5.3ZM23 10.3h7v5.3h-7ZM33 10.3h2.2q.9 0 1.5.7l4.1 4.6H33Z"/><path fill-rule="evenodd" d="M9 29a6.5 6.5 0 1 0 13 0a6.5 6.5 0 1 0 -13 0ZM13.03 29a2.47 2.47 0 1 0 4.94 0a2.47 2.47 0 1 0 -4.94 0Z"/><path fill-rule="evenodd" d="M42 29a6.5 6.5 0 1 0 13 0a6.5 6.5 0 1 0 -13 0ZM46.03 29a2.47 2.47 0 1 0 4.94 0a2.47 2.47 0 1 0 -4.94 0Z"/>`;
 
-const suv = `
-<path fill-rule="evenodd" d="M3 28.5 L3 18 Q3 15.8 5 15.4 L9.5 14.6 L11.4 8.4 Q12 6.5 14 6.5 L43 6.5 Q45 6.5 46.2 8 L52 15 L58.6 16.8 Q62 17.8 62 21.5 L62 28.5 L59 28.5 A9 9 0 0 0 41 28.5 L24 28.5 A9 9 0 0 0 6 28.5 Z
-M12.8 14 L14.2 9 L26 9 L26 14 Z
-M28.6 9 L42 9 Q43 9 43.6 9.8 L47.8 14 L28.6 14 Z"/>
-<path fill-rule="evenodd" d="${iconRing(15, 28.5, 7, 2.4)}"/>
-<path fill-rule="evenodd" d="${iconRing(50, 28.5, 7, 2.4)}"/>`;
+const motorbike = `<path fill-rule="evenodd" d="M5 28a7 7 0 1 0 14 0a7 7 0 1 0 -14 0ZM9.34 28a2.66 2.66 0 1 0 5.32 0a2.66 2.66 0 1 0 -5.32 0Z"/><path fill-rule="evenodd" d="M45 28a7 7 0 1 0 14 0a7 7 0 1 0 -14 0ZM49.34 28a2.66 2.66 0 1 0 5.32 0a2.66 2.66 0 1 0 -5.32 0Z"/>
+<path d="M14 17.5q0-2.5 2.5-2.5H28l2-3.2q.9-1.3 2.4-1.3h7.4q1.7 0 2.1 1.6L43 17H38.5l-2.5 9h-10.5L22 20.5H16.5Q14 20.5 14 17.5Z"/>
+<path d="M18.6 26.2l5.6-1.7M42 13l6.6 9.9M40 9.5h5.5M42.6 9.5l-.6 3.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>`;
 
-const motorbike = `
-<g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-  <circle cx="11" cy="27" r="7.7"/>
-  <circle cx="53" cy="27" r="7.7"/>
-  <path d="M45.4 13 L53 27"/>
-  <path d="M44.8 11.8 L41 9.6"/>
-  <path d="M11 27 L27 27.6"/>
-</g>
-<circle cx="11" cy="27" r="1.8" fill="currentColor"/>
-<circle cx="53" cy="27" r="1.8" fill="currentColor"/>
-<rect x="25" y="20.4" width="15" height="10.4" rx="3" fill="currentColor"/>
-<path fill="currentColor" d="M6.8 18.6 Q6.8 16.8 8.8 16.6 L24.2 16 Q26.4 15.8 27.4 13.8 Q28.8 11.2 32 11.2 L38.2 11.6 Q40.8 12 41.2 14.4 L41.4 19 L37.6 20 L24 20.4 L9.6 20.4 Q6.8 20.4 6.8 18.6 Z"/>
-<circle cx="46.6" cy="16" r="3.2" fill="currentColor"/>`;
+const scooter = `<path fill-rule="evenodd" d="M8.5 29.5a5.5 5.5 0 1 0 11 0a5.5 5.5 0 1 0 -11 0ZM11.91 29.5a2.09 2.09 0 1 0 4.18 0a2.09 2.09 0 1 0 -4.18 0Z"/><path fill-rule="evenodd" d="M45.5 29.5a5.5 5.5 0 1 0 11 0a5.5 5.5 0 1 0 -11 0ZM48.91 29.5a2.09 2.09 0 1 0 4.18 0a2.09 2.09 0 1 0 -4.18 0Z"/>
+<path d="M5 24.5q0-6.5 6.5-7.8L26 16q3.5 0 4.6 3.2L32 23.5h9.5L44.6 10.2q.5-1.7 2.2-1.7h1.4q1.3 0 1.1 1.3L46.6 24q-.4 2.3-2.7 2.3H22a8 8 0 0 0-16 0Z"/>
+<path d="M10 15.2q0-3.2 3.2-3.2h10.6q2.6 0 2.6 2.4v1.2H10Z"/>
+<path d="M44 7h7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+<path d="M47.6 19l1.6 5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>`;
 
-const scooter = `
-<path fill-rule="evenodd" d="M6.5 29.5 Q3.8 24.5 5.6 19 Q7.4 14.4 13 14 L27 14 C29.4 17.6 30.4 21.4 31 24.5 L31 29.5 L22.5 29.5 A7.5 7.5 0 0 0 7.5 29.5 Z"/>
-<path fill="currentColor" d="M9.2 14.6 Q9.2 10.8 13 10.6 L25.2 10.6 Q28.4 10.8 28.8 13.6 L28.8 14.6 Z"/>
-<rect x="27.5" y="24" width="16" height="4.6" rx="2.2" fill="currentColor"/>
-<path fill="currentColor" d="M39.8 28.6 L39.8 25 Q41.4 17 43.2 10.8 Q43.8 8.8 45.8 9.2 L47.4 9.7 Q48.4 10.3 48 11.8 Q46.2 19 45.4 25 L45.4 28.6 Z"/>
-<circle cx="49.6" cy="12" r="3" fill="currentColor"/>
-<path fill="currentColor" d="M41.4 8 L49.6 8 Q50.6 8 50.6 9 Q50.6 10 49.6 10 L41.4 10 Q40.4 10 40.4 9 Q40.4 8 41.4 8 Z"/>
-<path d="M47.4 15 L51 29.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/>
-<path fill="currentColor" d="M45.6 22 Q50.6 18.4 56.6 23 L57 25.2 Q51.6 21.8 46.6 24.8 Z"/>
-<path fill-rule="evenodd" d="${iconRing(15, 29.5, 5.6, 2)}"/>
-<path fill-rule="evenodd" d="${iconRing(51, 29.5, 5.6, 2)}"/>`;
-
-// ATV: knobby fat tyres, flat fenders with cargo racks front and rear, low body, seat, upright bars.
-const iconKnobs = (cx, cy, r, n, kr) => Array.from({ length: n }, (_, k) => {
-  const a = (k / n) * 2 * Math.PI;
-  return `<circle cx="${(cx + r * Math.cos(a)).toFixed(2)}" cy="${(cy + r * Math.sin(a)).toFixed(2)}" r="${kr}"/>`;
-}).join("");
-const atvWheel = (cx, cy) => `<path fill-rule="evenodd" d="${iconRing(cx, cy, 7.9, 3.2)}"/><circle cx="${cx}" cy="${cy}" r="1.5"/>${iconKnobs(cx, cy, 7.95, 16, 0.85)}`;
-const atv = `
-${atvWheel(13, 28.6)}
-${atvWheel(51, 28.6)}
-<path d="M2.6 18.6 Q2.6 15.2 6 15.2 L22.5 15.2 L24 18.6 Z"/>
-<path d="M40 18.6 L41.5 15.2 L58.4 15.2 Q61.8 15.2 61.8 18.6 Z"/>
-<path d="M21.5 15.2 L42.5 15.2 L44.6 23.6 Q44.6 26.4 41.8 26.4 L24.4 26.4 Q21.6 26.4 21.4 23.6 Z"/>
-<rect x="17.8" y="10.4" width="17.4" height="5.4" rx="2.7"/>
-<path d="M35 15.6 L36.4 11.6 Q37 10.4 38.4 10.4 L42.2 10.4 L43.6 15.6 Z"/>
-<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-  <path d="M4 11.2 L16 11.2 M5.6 11.2 L5.6 15.2 M10.4 11.2 L10.4 15.2 M15 11.2 L15 15.2"/>
-  <path d="M46.6 11.2 L60.4 11.2 M48 11.2 L48 15.2 M53.4 11.2 L53.4 15.2 M58.8 11.2 L58.8 15.2"/>
-</g>
-<g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round">
-  <path d="M43.4 13.8 L41.6 6.6"/>
-  <path d="M38.8 6.4 L44.2 6.4"/>
-</g>`;
-
+const atv = `<path fill-rule="evenodd" d="M6.5 29a7.5 7.5 0 1 0 15 0a7.5 7.5 0 1 0 -15 0ZM11.15 29a2.85 2.85 0 1 0 5.7 0a2.85 2.85 0 1 0 -5.7 0Z"/><path fill-rule="evenodd" d="M42.5 29a7.5 7.5 0 1 0 15 0a7.5 7.5 0 1 0 -15 0ZM47.15 29a2.85 2.85 0 1 0 5.7 0a2.85 2.85 0 1 0 -5.7 0Z"/>
+<path d="M3 19.5q0-3.5 3.5-3.5H26l3-4h9l3 4h16.5q3.5 0 3.5 3.5V21H3Z"/>
+<path d="M22 21h20l-2 6H24Z"/>
+<path d="M41 12l1.6-5M39.6 6.4h6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>`;
 
 const VEHICLE_TYPES = [
   { key: "scooter", get label() { return t("type_scooter"); }, art: scooter },
@@ -418,7 +374,7 @@ function dueValue(item) {
   if (isDone(item)) return { text: t("v_done"), cls: "v-none" };
   const days = daysUntil(item.dueDate);
   if (days === null) return { text: t("v_no_date"), cls: "v-none" };
-  if (days < 0) return { text: t("v_overdue", { n: -days }), cls: "v-red" };
+  if (days < 0) return { text: t("v_days", { n: -days }), meta: t("v_overdue_word"), cls: "v-red" };
   if (days === 0) return { text: t("v_today"), cls: "v-amber" };
   return { text: t("v_days", { n: days }), cls: days <= soonDays() ? "v-amber" : "v-green" };
 }
@@ -516,7 +472,7 @@ function renderVehiclePage(view, vehicle) {
 
   if (vehicle.vin || vehicle.note) {
     const details = el("div", "group details");
-    if (vehicle.vin) details.appendChild(el("div", "row", `<div class="row-text"><div class="row-title">${t("vin")}</div><div class="row-sub">${escapeHtml(vehicle.vin)}</div></div>`));
+    if (vehicle.vin) details.appendChild(el("div", "row", `<div class="row-text"><div class="row-title">${t("vin")}</div><div class="row-sub mono">${escapeHtml(vehicle.vin)}</div></div>`));
     if (vehicle.note) details.appendChild(el("div", "row", `<div class="row-text"><div class="row-title">${t("note")}</div><div class="row-sub">${escapeHtml(vehicle.note)}</div></div>`));
     view.appendChild(details);
   }
@@ -541,13 +497,13 @@ function renderVehiclePage(view, vehicle) {
     if (!items.length) group.appendChild(el("div", "row-empty", t("no_events", { cat: cat.label })));
     items.forEach(item => {
       const val = dueValue(item);
-      const row = el("div", "row tappable" + (isDone(item) ? " is-done" : ""), `
+      const row = el("div", "row tappable wrap" + (isDone(item) ? " is-done" : ""), `
         <div class="avatar cat ${CATEGORY_AVATAR[cat.key]}">${CATEGORY_ICONS[cat.key]}</div>
         <div class="row-text">
           <div class="row-title">${escapeHtml(item.label)}</div>
           <div class="row-sub">${eventSub(item)}</div>
         </div>
-        <div class="row-right"><div class="row-value ${val.cls}">${val.text}</div></div>`);
+        <div class="row-right"><div class="row-value ${val.cls}">${val.text}</div>${val.meta ? `<div class="row-meta">${val.meta}</div>` : ""}</div>`);
       row.setAttribute("role", "button");
       row.tabIndex = 0;
       row.onclick = () => openItemModal(vehicle.id, cat.key, item.id);
@@ -598,13 +554,13 @@ function openAttention() {
   list.innerHTML = "";
   attentionItems().forEach(({ v, c, it }) => {
     const val = dueValue(it);
-    const row = el("button", "row row-btn", `
+    const row = el("button", "row row-btn wrap", `
       <div class="avatar ${val.cls === "v-red" ? "a-red" : "a-amber"}">${vehicleIconSvg(vehicleTypeOf(v))}</div>
       <div class="row-text">
         <div class="row-title">${escapeHtml(it.label)}</div>
         <div class="row-sub">${escapeHtml(v.name)} · ${c.label}</div>
       </div>
-      <div class="row-right"><div class="row-value ${val.cls}">${val.text}</div></div>`);
+      <div class="row-right"><div class="row-value ${val.cls}">${val.text}</div>${val.meta ? `<div class="row-meta">${val.meta}</div>` : ""}</div>`);
     row.onclick = () => {
       if (navClosing || !attentionOverlay.classList.contains("open")) return;
       attentionOverlay.classList.remove("open");

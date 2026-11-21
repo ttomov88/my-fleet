@@ -23,9 +23,9 @@
   --text-2: #6F7480;
   --text-3: #A3A7B0;
   --line: rgba(25, 28, 31, 0.07);
-  --accent: #2F6BFF;
+  --accent: #1F4FD8;
   --accent-text: #FFFFFF;
-  --accent-soft: rgba(47, 107, 255, 0.12);
+  --accent-soft: rgba(31, 79, 216, 0.11);
   --red: #E5484D;
   --red-soft: rgba(229, 72, 77, 0.12);
   --amber: #E39B12;
@@ -34,8 +34,8 @@
   --green-soft: rgba(48, 164, 108, 0.13);
   --scrim: rgba(10, 12, 16, 0.42);
   --shadow: 0 8px 28px rgba(18, 22, 33, 0.10);
-  --hero-1: #2F6BFF;
-  --hero-2: #6A4BFF;
+  --hero-1: #1F4FD8;
+  --hero-2: #4B33CF;
   --sheet: #F2F3F7;
   --radius: 20px;
   --radius-sm: 14px;
@@ -52,8 +52,8 @@
     --text-2: #8E929C;
     --text-3: #5D616B;
     --line: rgba(255, 255, 255, 0.07);
-    --accent: #4D82FF;
-    --accent-soft: rgba(77, 130, 255, 0.18);
+    --accent: #3D6FEB;
+    --accent-soft: rgba(61, 111, 235, 0.18);
     --red: #FF6369;
     --red-soft: rgba(255, 99, 105, 0.16);
     --amber: #FFB224;
@@ -62,8 +62,8 @@
     --green-soft: rgba(61, 214, 140, 0.14);
     --scrim: rgba(0, 0, 0, 0.62);
     --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
-    --hero-1: #2A5BE0;
-    --hero-2: #5B3FE0;
+    --hero-1: #1B45C0;
+    --hero-2: #3E29B5;
     color-scheme: dark;
   }
 }
@@ -77,8 +77,8 @@
   --text-2: #8E929C;
   --text-3: #5D616B;
   --line: rgba(255, 255, 255, 0.07);
-  --accent: #4D82FF;
-  --accent-soft: rgba(77, 130, 255, 0.18);
+  --accent: #3D6FEB;
+  --accent-soft: rgba(61, 111, 235, 0.18);
   --red: #FF6369;
   --red-soft: rgba(255, 99, 105, 0.16);
   --amber: #FFB224;
@@ -87,8 +87,8 @@
   --green-soft: rgba(61, 214, 140, 0.14);
   --scrim: rgba(0, 0, 0, 0.62);
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
-  --hero-1: #2A5BE0;
-  --hero-2: #5B3FE0;
+  --hero-1: #1B45C0;
+  --hero-2: #3E29B5;
   color-scheme: dark;
 }
 
@@ -171,13 +171,14 @@ main { flex: 1; padding: 4px 16px 48px; max-width: 640px; margin: 0 auto; width:
 /* ---------- Groups and rows ---------- */
 .section-title {
   display: flex; align-items: center; justify-content: space-between;
-  margin: 0 4px 10px; font-size: 20px; font-weight: 700; letter-spacing: -0.3px;
+  margin: 0 4px 10px; font-size: 19px; font-weight: 700; letter-spacing: -0.3px; gap: 10px;
 }
+.section-title > span { min-width: 0; }
 .section-title .title-with-icon { display: flex; align-items: center; gap: 10px; }
 .pill-btn {
   border: none; cursor: pointer; border-radius: 999px; padding: 8px 14px;
   background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 14px;
-  display: inline-flex; align-items: center; gap: 4px;
+  display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;
 }
 .pill-btn:active { opacity: 0.75; }
 .group {
@@ -201,6 +202,8 @@ main { flex: 1; padding: 4px 16px 48px; max-width: 640px; margin: 0 auto; width:
 .row-right { text-align: right; flex-shrink: 0; }
 .row-value { font-weight: 600; font-size: 15px; }
 .row-value.v-red { color: var(--red); }
+.row.wrap .row-title { white-space: normal; overflow-wrap: anywhere; }
+.row.wrap .row-sub { white-space: normal; }
 .row-value.v-amber { color: var(--amber); }
 .row-value.v-green { color: var(--text); }
 .row-value.v-none { color: var(--text-3); }
@@ -263,8 +266,9 @@ main { flex: 1; padding: 4px 16px 48px; max-width: 640px; margin: 0 auto; width:
 
 .details .row { min-height: 52px; padding-top: 12px; padding-bottom: 12px; }
 .details .row + .row::before { left: 16px; }
-.details .row-sub { white-space: pre-wrap; overflow: visible; text-overflow: clip; word-break: break-word; color: var(--text); font-size: 14.5px; }
-.details .row-title { font-size: 12.5px; font-weight: 500; color: var(--text-2); }
+.details .row-sub { white-space: pre-wrap; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; color: var(--text); font-size: 14.5px; }
+.details .row-sub.mono { font-variant-numeric: tabular-nums; letter-spacing: 0.3px; }
+.details .row-title { white-space: normal; font-size: 12.5px; font-weight: 500; color: var(--text-2); }
 
 .cat-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 .cat-dot svg { width: 16px; height: 16px; }
