@@ -247,8 +247,9 @@ const t = $(A, "notifToggle"); t.checked = true; t.dispatchEvent(new A.Event("ch
 ok(Object.values(server.subs).some(s => s.user === "u-owner"), "turning on stores this phone's subscription");
 $(A, "testNotifBtn").click(); await wait(50);
 ok(server.pushes.includes("u-owner") && $(A, "toast").textContent.startsWith("Sent to 1 phone"), "test notification sent");
-$(A, "leadDays").value = "14"; $(A, "leadDays").dispatchEvent(new A.Event("change")); await wait(20);
-ok(server.members["u-owner"].leadDays === 14, "Remind me stored with the account");
+ok(A.eval("soonDays('maintenance')") === 30 && A.eval("soonDays('insurance')") === 14 && A.eval("soonDays('inspection')") === 30, "defaults: maintenance 30, insurance 14, inspection 30 days");
+$(A, "lead_insurance").value = "7"; $(A, "lead_insurance").dispatchEvent(new A.Event("change")); await wait(20);
+ok(JSON.stringify(server.members["u-owner"].lead) === JSON.stringify({ maintenance: 30, insurance: 7, inspection: 30 }), "each kind changeable, stored with the account");
 ok(!A.document.body.innerHTML.includes("autoBackupToggle"), "Auto-backup row removed");
 
 console.log("Offline start with a saved login");
@@ -278,7 +279,7 @@ console.log("Review fixes");
   P.eval(`state.data.vehicles[0].items.maintenance = [{id:"s1",label:"Soon",dueDate:"${soonIn(20)}",lastDate:null,notes:"",done:false}]; state.activeVehicleId = state.data.vehicles[0].id; render();`);
   ok(P.document.querySelector(".row-value").classList.contains("v-amber"), "20 days away is amber with Remind me = 30");
   P.eval(`document.getElementById("settingsBtn").click()`);
-  $(P, "leadDays").value = "14"; $(P, "leadDays").dispatchEvent(new P.Event("change")); await wait(20);
+  $(P, "lead_maintenance").value = "14"; $(P, "lead_maintenance").dispatchEvent(new P.Event("change")); await wait(20);
   ok(P.document.querySelector(".row-value").classList.contains("v-green"), "same event turns green with Remind me = 14");
   // event deleted on another phone while open here
   P.eval(`state.tab = "home"; state.activeVehicleId = state.data.vehicles[0].id; render()`); await wait(20);
@@ -450,6 +451,16 @@ console.log("Calendar");
   $(K, "itemLast").closest(".date-field").querySelector(".date-text").click();
   $(K, "calToday").click();
   ok($(K, "itemDue").value === K.eval("addMonthsISO(localISO(), 12)"), "Last done → Next due a year later");
+}
+
+console.log("Reminder windows per kind of event");
+{
+  const W = phone({ vehicles: [veh("w1", "Golf", { maintenance: [ev("a1", "Oil", "__20")], insurance: [ev("a2", "Casco", "__20")] })] });
+  await wait(10);
+  const in20 = W.eval("addMonthsISO(localISO(), 0)").replace(/\d{4}-\d{2}-\d{2}/, d => d);
+  W.eval(`const d = new Date(); d.setDate(d.getDate() + 20); const iso = localISO(d); state.data.vehicles[0].items.maintenance[0].dueDate = iso; state.data.vehicles[0].items.insurance[0].dueDate = iso; state.activeVehicleId = "w1"; render();`);
+  const vals = [...W.document.querySelectorAll("#main .row-value")].map(e => e.className);
+  ok(vals[0].includes("v-amber") && vals[1].includes("v-green"), "20 days away: maintenance is due soon (30), insurance not yet (14)");
 }
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

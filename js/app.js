@@ -74,11 +74,13 @@ function saveData(sync = true) {
   return true;
 }
 
-const DEFAULT_SETTINGS = { notifications: false, leadDays: 30, theme: "auto", lang: "bg" };
+// How many days before the due date each kind of event turns "due soon" and is reminded.
+const DEFAULT_LEAD = { maintenance: 30, insurance: 14, inspection: 30 };
+const DEFAULT_SETTINGS = { notifications: false, lead: { ...DEFAULT_LEAD }, theme: "auto", lang: "bg" };
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) { const st = JSON.parse(raw); if (st && typeof st === "object") return { ...DEFAULT_SETTINGS, ...st }; }
+    if (raw) { const st = JSON.parse(raw); if (st && typeof st === "object") { delete st.leadDays; return { ...DEFAULT_SETTINGS, ...st, lead: { ...DEFAULT_LEAD, ...(st.lead || {}) } }; } }
   } catch (e) {}
   return { ...DEFAULT_SETTINGS };
 }
@@ -209,7 +211,10 @@ function daysUntil(dateStr) {
   return Math.round((due - today) / 86400000);
 }
 // "Due soon" (amber) uses the same window as the reminders: Settings > Remind me.
-function soonDays() { return [7, 14, 30].includes(state.settings.leadDays) ? state.settings.leadDays : 30; }
+function soonDays(cat) {
+  const v = state.settings.lead && state.settings.lead[cat];
+  return [7, 14, 30].includes(v) ? v : DEFAULT_LEAD[cat];
+}
 /* ---------------- Rendering ---------------- */
 const mainEl = document.getElementById("main");
 const toastEl = document.getElementById("toast");
@@ -437,7 +442,7 @@ function vehicleStatusCounts(vehicle) {
       const days = daysUntil(item.dueDate);
       if (days === null) return;
       if (days < 0) overdue++;
-      else if (days <= soonDays()) soon++;
+      else if (days <= soonDays(cat.key)) soon++;
     });
   });
   return { overdue, soon };
@@ -457,22 +462,22 @@ const CATEGORY_AVATAR = { maintenance: "a-green", insurance: "a-blue", inspectio
 
 // Every not-done event that is overdue or due within the "Remind me" window, soonest first.
 function attentionItems() {
-  const lead = soonDays(), out = [];
+  const out = [];
   state.data.vehicles.forEach(v => CATEGORIES.forEach(c => (v.items[c.key] || []).forEach(it => {
     if (isDone(it)) return;
     const days = daysUntil(it.dueDate);
-    if (days !== null && days <= lead) out.push({ v, c, it, days });
+    if (days !== null && days <= soonDays(c.key)) out.push({ v, c, it, days });
   })));
   return out.sort((a, b) => a.days - b.days);
 }
 // Right-hand value of an event row: short, coloured by urgency.
-function dueValue(item) {
+function dueValue(item, cat) {
   if (isDone(item)) return { text: t("v_done"), cls: "v-none" };
   const days = daysUntil(item.dueDate);
   if (days === null) return { text: t("v_no_date"), cls: "v-none" };
   if (days < 0) return { text: t("v_days", { n: -days }), meta: t("v_overdue_word"), cls: "v-red" };
   if (days === 0) return { text: t("v_today"), cls: "v-amber" };
-  return { text: t("v_days", { n: days }), cls: days <= soonDays() ? "v-amber" : "v-green" };
+  return { text: t("v_days", { n: days }), cls: days <= soonDays(cat) ? "v-amber" : "v-green" };
 }
 function eventSub(item) {
   if (isDone(item)) { const on = item.lastDate || item.dueDate; return on ? t("sub_done_on", { date: formatDate(on) }) : t("v_done"); }
@@ -487,16 +492,16 @@ function el(tag, cls, html) {
 
 function renderHero(view) {
   const due = attentionItems();
-  const overdue = due.filter(d => d.days < 0).length, soon = due.length - overdue, lead = soonDays();
+  const overdue = due.filter(d => d.days < 0).length, soon = due.length - overdue;
   const hero = el("button", "hero" + (due.length ? "" : " is-calm"));
   let big, sub;
-  if (overdue) { big = t("hero_overdue_big", { n: overdue }); sub = soon ? t("hero_more_soon", { n: soon, d: lead }) : t("hero_tap"); }
+  if (overdue) { big = t("hero_overdue_big", { n: overdue }); sub = soon ? t("hero_more_soon", { n: soon }) : t("hero_tap"); }
   else if (soon) {
     const n = due[0];
     big = t("hero_soon_big", { n: soon });
     sub = t("hero_next", { what: `${escapeHtml(n.v.name)} · ${escapeHtml(n.it.label)}`, when: n.days === 0 ? t("when_today") : t("when_in", { n: n.days }) });
   }
-  else { big = t("hero_ok_big"); sub = t("hero_ok_sub", { d: lead }); }
+  else { big = t("hero_ok_big"); sub = t("hero_ok_sub"); }
   const n = state.data.vehicles.length;
   hero.innerHTML = `
     <div class="hero-label">${t("hero_label")}</div>
@@ -593,7 +598,7 @@ function renderVehiclePage(view, vehicle) {
     });
     if (!items.length) group.appendChild(el("div", "row-empty", t("no_events", { cat: cat.label })));
     items.forEach(item => {
-      const val = dueValue(item);
+      const val = dueValue(item, cat.key);
       const row = el("div", "row tappable wrap" + (isDone(item) ? " is-done" : ""), `
         <div class="avatar cat ${CATEGORY_AVATAR[cat.key]}">${CATEGORY_ICONS[cat.key]}</div>
         <div class="row-text">
@@ -689,17 +694,17 @@ function renderUpcoming() {
   mainEl.innerHTML = "";
   const view = el("div", "view");
   view.appendChild(el("h1", "page-title", t("tab_upcoming")));
-  const lead = soonDays(), all = [];
+  const all = [];
   state.data.vehicles.forEach(v => CATEGORIES.forEach(c => (v.items[c.key] || []).forEach(it => {
     if (isDone(it)) return;
     const days = daysUntil(it.dueDate);
-    if (days !== null) all.push({ v, c, it, days });
+    if (days !== null) all.push({ v, c, it, days, soon: days <= soonDays(c.key) });
   })));
   all.sort((a, b) => a.days - b.days);
   const groups = [
     { title: t("up_overdue"), list: all.filter(d => d.days < 0) },
-    { title: t("up_soon", { d: lead }), list: all.filter(d => d.days >= 0 && d.days <= lead) },
-    { title: t("up_later"), list: all.filter(d => d.days > lead) }
+    { title: t("up_soon"), list: all.filter(d => d.days >= 0 && d.soon) },
+    { title: t("up_later"), list: all.filter(d => d.days >= 0 && !d.soon) }
   ];
   if (!all.length) view.appendChild(el("div", "upcoming-empty", t("up_empty")));
   groups.forEach(g => {
@@ -707,7 +712,7 @@ function renderUpcoming() {
     view.appendChild(el("div", "upcoming-title", g.title));
     const group = el("div", "group");
     g.list.forEach(({ v, c, it }) => {
-      const val = dueValue(it);
+      const val = dueValue(it, c.key);
       const tone = val.cls === "v-red" ? "a-red" : val.cls === "v-amber" ? "a-amber" : "a-blue";
       const row = el("button", "row row-btn wrap", `
         <div class="avatar ${tone}">${vehicleIconSvg(vehicleTypeOf(v))}</div>
@@ -1238,15 +1243,19 @@ async function loadMemberSettings() {
   try {
     const { data } = await sb.from("fleet_members").select("settings").maybeSingle();
     if (!data) return;
-    const lead = Number(data.settings && data.settings.leadDays);
-    if ([7, 14, 30].includes(lead)) { if (lead !== state.settings.leadDays) { state.settings.leadDays = lead; saveSettings(); render(); } }
+    const remote = (data.settings && data.settings.lead) || null;
+    if (remote && typeof remote === "object") {
+      const lead = {};
+      CATEGORIES.forEach(c => { lead[c.key] = [7, 14, 30].includes(remote[c.key]) ? remote[c.key] : DEFAULT_LEAD[c.key]; });
+      if (!same(lead, state.settings.lead)) { state.settings.lead = lead; saveSettings(); render(); }
+    }
     // The server writes reminders in the language this phone uses.
-    if (![7, 14, 30].includes(lead) || !data.settings || data.settings.lang !== LANG) saveMemberSettings();
+    if (!remote || !data.settings || data.settings.lang !== LANG) saveMemberSettings();
   } catch (e) {}
 }
 async function saveMemberSettings() {
   if (!sb || !sync.userId) return;
-  try { await sb.from("fleet_members").update({ settings: { leadDays: state.settings.leadDays, lang: LANG } }).eq("user_id", sync.userId); } catch (e) {}
+  try { await sb.from("fleet_members").update({ settings: { lead: CATEGORIES.reduce((o, c) => ({ ...o, [c.key]: soonDays(c.key) }), {}), lang: LANG } }).eq("user_id", sync.userId); } catch (e) {}
 }
 
 let loggingOut = false;
@@ -1395,7 +1404,7 @@ document.getElementById("resetForm").onsubmit = async (e) => {
 const notifToggle = document.getElementById("notifToggle");
 function refreshSettingsPage() {
   notifToggle.checked = !!state.settings.notifications;
-  document.getElementById("leadDays").value = state.settings.leadDays || 30;
+  document.querySelectorAll(".lead-select").forEach(sel => { sel.value = String(soonDays(sel.dataset.cat)); });
   updateAccountInfo();
 }
 
@@ -1456,12 +1465,12 @@ notifToggle.onchange = async () => {
     notifToggle.disabled = false;
   }
 };
-document.getElementById("leadDays").onchange = (e) => {
-  state.settings.leadDays = parseInt(e.target.value, 10);
+document.querySelectorAll(".lead-select").forEach(sel => sel.onchange = () => {
+  state.settings.lead = { ...DEFAULT_LEAD, ...(state.settings.lead || {}), [sel.dataset.cat]: parseInt(sel.value, 10) };
   saveSettings();
   saveMemberSettings();
   render();
-};
+});
 document.getElementById("testNotifBtn").onclick = async (e) => {
   const btn = e.currentTarget;
   if (!state.settings.notifications) { showToast(t("notif_first")); return; }

@@ -15,7 +15,10 @@ const caches = {
   keys: async () => ["fleet-log-v1", "fleet-log-v8", "fast-track-v3", "poker-v2", vm.runInNewContext(code + ";CACHE_NAME", { self: { addEventListener() {} }, caches: {} })],
   delete: async (k) => { deleted.push(k); return true; },
 };
-vm.runInNewContext(code, { self, caches, URL, Request: class { constructor(u) { this.url = u; } }, fetch: async () => ({}), Response: { error: () => "error" } });
+const calls = [];
+const fakeFetch = async (url, opts) => { calls.push({ url, body: opts && opts.body ? JSON.parse(opts.body) : null }); return { ok: true, json: async () => ({ ok: true }) }; };
+self.registration.pushManager = { getSubscription: async () => ({ toJSON: () => ({ endpoint: "https://fcm.googleapis.com/fcm/send/abc", keys: { auth: "secret", p256dh: "p" } }) }) };
+vm.runInNewContext(code, { self, caches, URL, Request: class { constructor(u) { this.url = u; } }, fetch: fakeFetch, Response: { error: () => "error" } });
 
 let waits = [];
 const ev = (extra) => ({ waitUntil: (p) => waits.push(p), ...extra });
@@ -29,6 +32,17 @@ ok(shown[0] && shown[0].title === "My Fleet: просрочени събития
 listeners.push(ev({ data: { json: () => { throw new Error("not json"); }, text: () => "plain" } }));
 await Promise.all(waits);
 ok(shown[1] && shown[1].title === "My Fleet" && shown[1].body === "plain", "a malformed push still shows something");
+
+waits = [];
+listeners.push(ev({ data: { json: () => ({ title: "My Fleet: предстоящи събития", body: "x", tag: "fleet-log-due", actions: [{ action: "snooze", title: "Отложи 3 дни" }], snooze: { events: ["e1", "e2"], done: "Отложено до 25.11.2026", failed: "Не успях" } }) } }));
+await Promise.all(waits); waits = [];
+const n = shown[shown.length - 1];
+ok(n.actions && n.actions[0].title === "Отложи 3 дни" && n.data.snooze.events.length === 2, "reminder shows the 'Snooze 3 days' button");
+listeners.notificationclick(ev({ action: "snooze", notification: { close() {}, data: n.data } }));
+await Promise.all(waits); waits = [];
+const call = calls.find(c => c.body && c.body.action === "snooze");
+ok(call && call.body.endpoint.includes("fcm") && call.body.auth === "secret" && call.body.events.join() === "e1,e2", "pressing it asks the server to snooze those events");
+ok(shown[shown.length - 1].body === "Отложено до 25.11.2026", "and confirms on the phone");
 
 let responded = false;
 listeners.fetch({ request: { method: "GET", url: "https://lsyihonmzxpjnmiueqgp.supabase.co/rest/v1/fleets", mode: "cors", destination: "" }, respondWith: () => { responded = true; } });

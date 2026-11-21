@@ -1,8 +1,8 @@
 // Bump CACHE_NAME whenever icons, manifest.json or vendor/ change: those are served cache-first.
 // The app's own code (index.html, css/, js/) is network-first, so updates show up right away.
-const CACHE_NAME = "fleet-log-v16";
+const CACHE_NAME = "fleet-log-v17";
 // The app itself: these must download for a new version to install.
-const CORE = ["./", "./index.html", "./css/app.css?v=16", "./js/i18n.js?v=16", "./js/app.js?v=16", "./manifest.json", "./vendor/supabase.js"];
+const CORE = ["./", "./index.html", "./css/app.css?v=17", "./js/i18n.js?v=17", "./js/app.js?v=17", "./manifest.json", "./vendor/supabase.js"];
 // Nice to have offline. A missing or misplaced icon must never block an app update.
 const OPTIONAL = [
   "./icons/icon-192.png",
@@ -88,13 +88,40 @@ self.addEventListener("push", (event) => {
     icon: "icons/icon-192.png",
     badge: "icons/badge-96.png",
     tag,
-    renotify: true   // a new reminder with the same tag still makes a sound
+    renotify: true,   // a new reminder with the same tag still makes a sound
+    actions: Array.isArray(msg.actions) ? msg.actions.slice(0, 2) : [],   // "Snooze 3 days"
+    data: { snooze: msg.snooze || null }
   }));
 });
+
+// "Snooze 3 days" on a reminder: the server skips those events for 3 days. The phone identifies
+// itself with its own notification sign-up, so no login is needed here.
+const API_URL = "https://lsyihonmzxpjnmiueqgp.supabase.co/functions/v1/api";
+const API_KEY = "sb_publishable_VOsIQ53p2Lulq6-Ov4m7sg_5KywhXPr";
+async function snoozeFromNotification(info) {
+  let ok = false;
+  try {
+    const sub = await self.registration.pushManager.getSubscription();
+    if (sub) {
+      const j = sub.toJSON();
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: API_KEY, Authorization: `Bearer ${API_KEY}` },
+        body: JSON.stringify({ action: "snooze", endpoint: j.endpoint, auth: j.keys && j.keys.auth, events: info.events })
+      });
+      ok = res.ok;
+    }
+  } catch (e) {}
+  await self.registration.showNotification("My Fleet", {
+    body: ok ? info.done : info.failed, tag: "fleet-log-snooze", icon: "icons/icon-192.png", badge: "icons/badge-96.png", silent: true
+  });
+}
 
 // Tapping a reminder opens the app (or brings it to the front if it's already open).
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const info = event.notification.data && event.notification.data.snooze;
+  if (event.action === "snooze" && info) { event.waitUntil(snoozeFromNotification(info)); return; }
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
       for (const w of windows) { if ("focus" in w) return w.focus(); }

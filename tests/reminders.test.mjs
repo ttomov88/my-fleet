@@ -21,5 +21,21 @@ ok(/\+2 more$/.test(r.reminderMessage([0, 1, 2, 3, 4].map(i => ({ vehicle: "V", 
 const bg = r.reminderMessage(d30, r.langOf(undefined));
 ok(bg.title === "My Fleet: просрочени събития" && bg.body.startsWith("Toyota: Casco (просрочено с 12 д.)") && bg.body.includes("Oil (остават 3 д.)"), "Bulgarian by default", JSON.stringify(bg));
 ok(r.langOf("en") === "en" && r.langOf("de") === "bg" && /Тестово/.test(r.testMessage()), "unknown language falls back to Bulgarian");
+
+// Per-kind windows, snoozing
+const data2 = { vehicles: [{ name: "Golf", items: {
+  maintenance: [{ id: "m", label: "Oil", dueDate: "2026-12-12" }],
+  insurance: [{ id: "i", label: "Casco", dueDate: "2026-12-12" }, { id: "j", label: "Liability", dueDate: "2026-11-30" }],
+  inspection: [] } }] };
+const settings = {};   // nothing chosen: maintenance 30, insurance 14, inspection 30
+const per = r.dueEvents(data2, "2026-11-22", (c) => r.leadOf(settings, c));
+ok(per.map(e => e.id).join() === "j,m", "20 days away: maintenance in (30), insurance out (14); 8 days away: insurance in", per.map(e => e.id + ":" + e.days).join(" "));
+ok(r.leadOf({ lead: { insurance: 7 } }, "insurance") === 7 && r.leadOf({ lead: { insurance: 99 } }, "insurance") === 14, "chosen window used; invalid falls back to the default");
+const sn = r.dueEvents(data2, "2026-11-22", 30, { j: "2026-11-25", m: "2026-11-20" });
+ok(sn.map(e => e.id).join() === "m,i", "snoozed event left out until its day; expired snooze ignored", sn.map(e => e.id).join());
+ok(r.dueEvents(data2, "2026-11-25", 30, { j: "2026-11-25" }).some(e => e.id === "j"), "snoozed event comes back on its day");
+const parts = r.snoozeParts(per, "2026-11-22", "bg");
+ok(parts.actions[0].title === "Отложи 3 дни" && parts.snooze.events.join() === "j,m" && parts.snooze.done.includes("25.11.2026"), "snooze button and texts", JSON.stringify(parts));
+ok(r.addDaysISO("2026-12-30", 3) === "2027-01-02", "date maths across the year end");
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

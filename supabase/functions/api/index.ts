@@ -6,13 +6,13 @@
 // POST { action: "test" }  (logged-in user)      -> send a test notification to that person's phones
 // POST { action: "daily" } (x-cron-token header) -> the 08:00 reminder run, called by the scheduler
 // POST { action: "adminReset", email } (administrator) -> temporary password for an invited member
+// POST { action: "snooze", endpoint, auth, events } (from a notification) -> skip those events for 3 days
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateVapidKeys, sendPush, type Subscription, type VapidKeys } from "./webpush.ts";
-import { dueEvents, langOf, localNow, reminderMessage, testMessage } from "./reminders.ts";
+import { addDaysISO, dueEvents, langOf, leadOf, localNow, reminderMessage, SNOOZE_DAYS, snoozeParts, testMessage } from "./reminders.ts";
 
 const TIME_ZONE = "Europe/Sofia";
 const REMINDER_HOUR = 8;
-const LEAD_DAYS = [7, 14, 30];
 const SUBJECT = "https://ttomov88.github.io/fleet-log/";
 
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
@@ -142,6 +142,26 @@ async function adminReset(req: Request, body: any) {
   return json({ password });
 }
 
+// "Snooze 3 days" pressed on a reminder. The phone proves who it is with its own notification
+// sign-up (endpoint + secret), which only that phone and this server know.
+async function snooze(body: any) {
+  const endpoint = String(body.endpoint ?? ""), auth = String(body.auth ?? "");
+  const events = Array.isArray(body.events) ? body.events.map(String).filter((x: string) => x && x.length <= 64).slice(0, 50) : [];
+  if (!endpoint || !auth || !events.length) return json({ error: "bad_request" }, 400);
+  const { data: sub } = await admin.from("push_subscriptions").select("user_id, auth").eq("endpoint", endpoint).maybeSingle();
+  if (!sub || sub.auth !== auth) return json({ error: "forbidden" }, 403);
+  const { data: m, error } = await admin.from("fleet_members").select("snoozed").eq("user_id", sub.user_id).maybeSingle();
+  if (error || !m) return json({ error: "no_member" }, 404);
+  const { date: today } = localNow(TIME_ZONE);
+  const until = addDaysISO(today, SNOOZE_DAYS);
+  const snoozed: Record<string, string> = {};
+  for (const [id, d] of Object.entries(m.snoozed ?? {})) if (typeof d === "string" && d > today) snoozed[id] = d;   // drop old ones
+  for (const id of events) snoozed[id] = until;
+  const { error: uErr } = await admin.from("fleet_members").update({ snoozed }).eq("user_id", sub.user_id);
+  if (uErr) throw uErr;
+  return json({ ok: true, until });
+}
+
 async function daily(req: Request, body: any) {
   const { cron_token } = await configValues(["cron_token"]);
   if (!cron_token || req.headers.get("x-cron-token") !== cron_token) return json({ error: "forbidden" }, 403);
@@ -152,7 +172,7 @@ async function daily(req: Request, body: any) {
   if (hour !== REMINDER_HOUR && !force) return json({ skipped: true, sofiaHour: hour });
 
   const [{ data: members, error: mErr }, { data: fleets, error: fErr }] = await Promise.all([
-    admin.from("fleet_members").select("user_id, fleet_id, settings, last_reminder_date"),
+    admin.from("fleet_members").select("user_id, fleet_id, settings, last_reminder_date, snoozed"),
     admin.from("fleets").select("id, data"),
   ]);
   if (mErr) throw mErr;
@@ -162,10 +182,10 @@ async function daily(req: Request, body: any) {
   const report: unknown[] = [];
   for (const m of members ?? []) {
     if (m.last_reminder_date === today && !force) continue;   // at most one reminder per person per day
-    const lead = LEAD_DAYS.includes(Number(m.settings?.leadDays)) ? Number(m.settings.leadDays) : 30;
-    const due = dueEvents(fleetData.get(m.fleet_id), today, lead);
+    const lang = langOf(m.settings?.lang);
+    const due = dueEvents(fleetData.get(m.fleet_id), today, (cat) => leadOf(m.settings, cat), m.snoozed ?? {});
     let result = null;
-    if (due.length) result = await pushToUser(m.user_id, { ...reminderMessage(due, langOf(m.settings?.lang)), tag: "fleet-log-due" }, vapid);
+    if (due.length) result = await pushToUser(m.user_id, { ...reminderMessage(due, lang), ...snoozeParts(due, today, lang), tag: "fleet-log-due" }, vapid);
     // Mark the day done unless every phone failed: then the 08:20 / 08:40 runs try again.
     const delivered = !result || result.phones === 0 || result.sent > 0;
     if (delivered) await admin.from("fleet_members").update({ last_reminder_date: today }).eq("user_id", m.user_id);
@@ -185,6 +205,7 @@ Deno.serve(async (req) => {
       case "test": return await test(req);
       case "daily": return await daily(req, body);
       case "adminReset": return await adminReset(req, body);
+      case "snooze": return await snooze(body);
       default: return json({ error: "unknown_action" }, 400);
     }
   } catch (e) {

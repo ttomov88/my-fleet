@@ -2,8 +2,15 @@
 // not marked Done, has a due date, and is overdue or due within the person's "Remind me" window.
 
 const CATEGORIES = ["maintenance", "insurance", "inspection"];
+const LEAD_CHOICES = [7, 14, 30];
+// How many days before the due date each kind of event is reminded, unless the person changed it.
+export const DEFAULT_LEAD: Record<string, number> = { maintenance: 30, insurance: 14, inspection: 30 };
+export function leadOf(settings: any, cat: string): number {
+  const v = Number(settings?.lead?.[cat]);
+  return LEAD_CHOICES.includes(v) ? v : DEFAULT_LEAD[cat];
+}
 
-export interface DueEvent { vehicle: string; label: string; days: number }
+export interface DueEvent { id: string; vehicle: string; label: string; days: number }
 
 // Today's date in a time zone, as YYYY-MM-DD, plus the hour (0-23).
 export function localNow(timeZone: string, now = new Date()): { date: string; hour: number } {
@@ -19,7 +26,10 @@ function daysBetween(fromISO: string, toISO: string): number {
   return Math.round((b - a) / 86400000);
 }
 
-export function dueEvents(data: unknown, todayISO: string, leadDays: number): DueEvent[] {
+// leadDays: one number for every category, or a function giving it per category.
+// snoozed: { eventId: "YYYY-MM-DD" } — the event is left out until that day.
+export function dueEvents(data: unknown, todayISO: string, leadDays: number | ((cat: string) => number), snoozed: Record<string, string> = {}): DueEvent[] {
+  const leadFor = typeof leadDays === "function" ? leadDays : () => leadDays;
   const out: DueEvent[] = [];
   const vehicles = (data && typeof data === "object" && Array.isArray((data as any).vehicles)) ? (data as any).vehicles : [];
   for (const v of vehicles) {
@@ -29,7 +39,9 @@ export function dueEvents(data: unknown, todayISO: string, leadDays: number): Du
       for (const it of list) {
         if (!it || it.done === true || typeof it.dueDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(it.dueDate)) continue;
         const days = daysBetween(todayISO, it.dueDate);
-        if (days <= leadDays) out.push({ vehicle: String(v.name || "Vehicle"), label: String(it.label || "Event"), days });
+        const id = String(it.id ?? "");
+        if (id && typeof snoozed[id] === "string" && snoozed[id] > todayISO) continue;
+        if (days <= leadFor(cat)) out.push({ id, vehicle: String(v.name || "Vehicle"), label: String(it.label || "Event"), days });
       }
     }
   }
@@ -45,16 +57,37 @@ const TEXT = {
     more: (n: number) => `+${n} more`,
     overdue: "My Fleet: overdue events", soon: "My Fleet: events due soon",
     test: "Test notification: reminders reach this phone.",
+    snooze: "Snooze 3 days",
+    snoozed: (d: string) => `Snoozed. Next reminder on ${d}.`,
+    snoozeFailed: "Couldn't snooze. Open the app and try again.",
   },
   bg: {
     when: (d: number) => d < 0 ? `просрочено с ${-d} д.` : d === 0 ? "днес" : `остават ${d} д.`,
     more: (n: number) => `+ още ${n}`,
     overdue: "My Fleet: просрочени събития", soon: "My Fleet: предстоящи събития",
     test: "Тестово известие: напомнянията стигат до този телефон.",
+    snooze: "Отложи 3 дни",
+    snoozed: (d: string) => `Отложено. Следващо напомняне на ${d}.`,
+    snoozeFailed: "Не успях да отложа. Отворете приложението и опитайте пак.",
   },
 };
 
 export function testMessage(lang: Lang = "bg"): string { return TEXT[lang].test; }
+
+export function addDaysISO(iso: string, n: number): string {
+  const d = new Date(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10) + n));
+  return d.toISOString().slice(0, 10);
+}
+export const SNOOZE_DAYS = 3;
+// The "Snooze 3 days" button on a reminder and the texts the phone shows after pressing it.
+export function snoozeParts(due: DueEvent[], todayISO: string, lang: Lang = "bg") {
+  const until = addDaysISO(todayISO, SNOOZE_DAYS);
+  const shown = lang === "bg" ? `${until.slice(8, 10)}.${until.slice(5, 7)}.${until.slice(0, 4)}` : `${until.slice(8, 10)}/${until.slice(5, 7)}/${until.slice(0, 4)}`;
+  return {
+    actions: [{ action: "snooze", title: TEXT[lang].snooze }],
+    snooze: { events: due.map(e => e.id).filter(Boolean).slice(0, 50), done: TEXT[lang].snoozed(shown), failed: TEXT[lang].snoozeFailed },
+  };
+}
 
 export function reminderMessage(due: DueEvent[], lang: Lang = "bg"): { title: string; body: string } {
   const tx = TEXT[lang];
