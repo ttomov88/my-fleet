@@ -409,7 +409,7 @@ function el(tag, cls, html) {
 function renderHero(view) {
   const due = attentionItems();
   const overdue = due.filter(d => d.days < 0).length, soon = due.length - overdue, lead = soonDays();
-  const hero = el("button", "hero" + (due.length ? "" : " is-calm"));
+  const hero = el("button", "hero" + (due.length ? "" : " is-calm") + (due.some(d => d.days < 0) ? " has-overdue" : ""));
   let big, sub;
   if (overdue) { big = t("hero_overdue_big", { n: overdue }); sub = soon ? t("hero_more_soon", { n: soon, d: lead }) : t("hero_tap"); }
   else if (soon) {
@@ -423,10 +423,10 @@ function renderHero(view) {
     <div class="hero-label">${t("hero_label")}</div>
     <div class="hero-big">${big}</div>
     <div class="hero-sub">${sub}</div>
-    <div class="hero-pills">
-      ${overdue ? `<span class="hero-pill"><i class="p-red"></i>${t("pill_overdue", { n: overdue })}</span>` : ""}
-      ${soon ? `<span class="hero-pill"><i class="p-amber"></i>${t("pill_soon", { n: soon })}</span>` : ""}
-      <span class="hero-pill">${t("pill_vehicles", { n })}</span>
+    <div class="hero-stats">
+      <div class="stat ${overdue ? "s-red" : "s-zero"}"><b>${overdue}</b><span>${t("stat_overdue")}</span></div>
+      <div class="stat ${soon ? "s-amber" : "s-zero"}"><b>${soon}</b><span>${t("stat_soon")}</span></div>
+      <div class="stat"><b>${n}</b><span>${t("stat_vehicles", { n })}</span></div>
     </div>`;
   if (due.length) hero.onclick = () => switchTab("upcoming");
   else hero.tabIndex = -1;

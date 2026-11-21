@@ -94,6 +94,7 @@ const I18N = {
     language: "Language", data_group: "Data", restore_point: "Restore point", restore_sub: "Go back to an earlier version",
     export_backup: "Export backup", import_backup: "Import backup", done: "Done",
     vehicle_type: "Vehicle type", reminder_notifications: "Reminder notifications",
+    stat_overdue: "overdue", stat_soon: "due soon", stat_vehicles: p => pl(p.n, "vehicle", "vehicles"),
     tab_home: "Home", tab_upcoming: "Upcoming", reg_date: "Registration date", date_ph: "dd/mm/yyyy",
     up_overdue: "Overdue", up_soon: p => `Next ${p.d} days`, up_later: "Later",
     up_empty: "No upcoming events. Add dates to your events to see them here."
@@ -192,6 +193,7 @@ const I18N = {
     language: "Език", data_group: "Данни", restore_point: "Точка за възстановяване", restore_sub: "Върнете се към по-ранна версия",
     export_backup: "Изтегли резервно копие", import_backup: "Зареди резервно копие", done: "Готово",
     vehicle_type: "Вид превозно средство", reminder_notifications: "Известия за напомняне",
+    stat_overdue: "просрочени", stat_soon: "предстоящи", stat_vehicles: p => pl(p.n, "превозно средство", "превозни средства"),
     tab_home: "Начало", tab_upcoming: "Предстоящи", reg_date: "Дата на регистрация", date_ph: "дд.мм.гггг",
     up_overdue: "Просрочени", up_soon: p => `Следващите ${p.d} дни`, up_later: "По-късно",
     up_empty: "Няма предстоящи събития. Добавете срокове към събитията, за да ги виждате тук."
