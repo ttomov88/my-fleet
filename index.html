@@ -105,6 +105,17 @@
       </button>
     </div>
 
+    <div class="group-title" data-i18n="account_group">Account</div>
+    <div class="group">
+      <button class="row row-btn" id="changePwBtn">
+        <div class="row-text"><div class="row-title" data-i18n="change_pw">Change password</div></div>
+        <span class="chev"></span>
+      </button>
+      <button class="row row-btn" id="adminResetBtn" hidden>
+        <div class="row-text"><div class="row-title" data-i18n="admin_reset">Temporary password for a member</div><div class="row-sub" data-i18n="admin_reset_sub">For someone who forgot theirs</div></div>
+        <span class="chev"></span>
+      </button>
+    </div>
     <div class="group">
       <button class="row row-btn row-danger" id="logoutBtn">
         <div class="row-text"><div class="row-title" data-i18n="log_out">Log out</div></div>
@@ -228,6 +239,44 @@
   </div>
 </div>
 
+<div class="overlay" id="passwordOverlay">
+  <form class="modal" id="passwordForm" novalidate>
+    <div class="sheet-grab"></div>
+    <h3 data-i18n="change_pw">Change password</h3>
+    <input type="email" autocomplete="username" id="pwUser" hidden />
+    <div class="field">
+      <label for="pwNew" data-i18n="new_pw">New password</label>
+      <input id="pwNew" type="password" autocomplete="new-password" minlength="8" />
+    </div>
+    <div class="field">
+      <label for="pwRepeat" data-i18n="repeat_pw">Repeat the new password</label>
+      <input id="pwRepeat" type="password" autocomplete="new-password" minlength="8" />
+    </div>
+    <div class="login-msg" id="pwMsg" role="alert"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="pwCancel" data-i18n="cancel">Cancel</button>
+      <button type="submit" class="btn btn-primary" id="pwSave" data-i18n="save">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="overlay" id="resetOverlay">
+  <form class="modal" id="resetForm" novalidate>
+    <div class="sheet-grab"></div>
+    <h3 data-i18n="admin_reset">Temporary password for a member</h3>
+    <div class="field">
+      <label for="resetEmail" data-i18n="member_email">Member's email</label>
+      <input id="resetEmail" type="email" inputmode="email" autocapitalize="none" spellcheck="false" autocomplete="off" />
+    </div>
+    <div class="temp-pw" id="resetResult" hidden></div>
+    <div class="login-msg" id="resetMsg" role="alert"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="resetClose" data-i18n="close">Close</button>
+      <button type="submit" class="btn btn-primary" id="resetGo" data-i18n="make_temp_pw">Create</button>
+    </div>
+  </form>
+</div>
+
 <div class="overlay overlay-top" id="confirmOverlay" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
   <div class="modal confirm-sheet">
     <h3 id="confirmTitle"></h3>
@@ -254,6 +303,7 @@
       <input id="loginPassword" type="password" autocomplete="current-password" minlength="8" />
     </div>
     <div class="login-msg" id="loginMsg" role="alert"></div>
+    <button type="button" class="link-btn" id="forgotBtn" data-i18n="forgot_pw">Forgot password?</button>
     <div class="modal-actions modal-actions-stack">
       <button type="submit" class="btn btn-primary" id="loginBtn" data-i18n="log_in">Log in</button>
       <button type="button" class="btn btn-secondary" id="registerBtn" data-i18n="create_account">Create account</button>

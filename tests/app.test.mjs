@@ -81,6 +81,12 @@ function makeClient(win) {
         authStore().setItem("fleetlog_auth", JSON.stringify(session));
         return { data: { session, user: session.user }, error: null };
       },
+      async updateUser({ password }) {
+        if (server.offline) return { data: null, error: { message: "Failed to fetch" } };
+        const u = Object.values(server.users).find(x => x.id === session.user.id);
+        if (u.password === password) return { data: null, error: { code: "same_password", message: "New password should be different from the old password." } };
+        u.password = password; return { data: { user: session.user }, error: null };
+      },
       async signOut() { session = null; authStore().removeItem("fleetlog_auth"); listeners.forEach(l => l("SIGNED_OUT", null)); return { error: null }; },
       onAuthStateChange(cb) { listeners.push(cb); return { data: { subscription: { unsubscribe() {} } } }; },
     },
@@ -96,6 +102,11 @@ function fakeFetch(url, opts) {
     else if (!(e in server.allowed)) { out = { error: "not_allowed" }; status = 403; }
     else if (server.allowed[e]) { out = { error: "join_first", join: server.allowed[e] }; status = 409; }
     else { server.users[e] = { id: "u-" + e, password: body.password, fleet: "f-" + e }; server.fleets["f-" + e] = { data: { vehicles: [] }, version: 1 }; out = { ok: true }; }
+  } else if (body.action === "adminReset") {
+    const caller = Object.entries(server.users).find(([, u]) => "tok-" + u.id === opts.headers.Authorization.replace("Bearer ", ""));
+    if (!caller || caller[0] !== "ttomov88@gmail.com") { out = { error: "forbidden" }; status = 403; }
+    else if (!server.users[body.email]) { out = { error: "no_such_member" }; status = 404; }
+    else { server.users[body.email].password = "Fleet-1234-ABCD"; out = { password: "Fleet-1234-ABCD" }; }
   } else if (body.action === "publicKey") out = { publicKey: "BIW_2JTwPKAJnOdmfNMR71l4rsWqGLmc4Q3f95Hk4RUY6t2yZPkhxe1usdKzB0tgPTo_Xm6kT4Fdg6VE9fejZ9o" };
   else if (body.action === "test") {
     const uid = opts.headers.Authorization.replace("Bearer tok-", "");
@@ -383,6 +394,35 @@ console.log("Registration date and Bulgarian dates");
   const main = $(R2, "main").textContent;
   ok(main.includes("Дата на регистрация") && main.includes("07.04.2019"), "shown on the vehicle page");
   ok(main.includes("Срок 05.03.2027"), "event dates shown as дд.мм.гггг", main.match(/Срок [^ ]+/)?.[0]);
+}
+
+console.log("Passwords");
+{
+  const P1 = phone(null);
+  await wait(20);
+  $(P1, "forgotBtn").click();
+  ok($(P1, "confirmOverlay").classList.contains("open") && $(P1, "confirmText").textContent.includes("ttomov88@gmail.com") && $(P1, "confirmCancel").hidden, "Forgot password explains who resets it");
+  await wait(20);
+  await login(P1, "fam@x.com", "secret123"); await wait(50);
+  ok($(P1, "adminResetBtn").hidden, "members don't see the admin reset");
+  $(P1, "settingsBtn").click(); $(P1, "changePwBtn").click();
+  $(P1, "pwNew").value = "newpass123"; $(P1, "pwRepeat").value = "different1";
+  $(P1, "passwordForm").dispatchEvent(new P1.Event("submit", { cancelable: true })); await wait(20);
+  ok($(P1, "pwMsg").textContent === "The two passwords don't match", "mismatch caught");
+  $(P1, "pwRepeat").value = "newpass123";
+  $(P1, "passwordForm").dispatchEvent(new P1.Event("submit", { cancelable: true })); await wait(50);
+  ok(server.users["fam@x.com"].password === "newpass123" && !$(P1, "passwordOverlay").classList.contains("open"), "password changed");
+  const P2 = phone(null);
+  await wait(20);
+  await login(P2, "ttomov88@gmail.com", "secret123"); await wait(50);
+  ok(!$(P2, "adminResetBtn").hidden, "administrator sees the reset");
+  $(P2, "settingsBtn").click(); $(P2, "adminResetBtn").click();
+  $(P2, "resetEmail").value = "fam@x.com";
+  $(P2, "resetForm").dispatchEvent(new P2.Event("submit", { cancelable: true })); await wait(50);
+  ok($(P2, "resetResult").textContent === "Fleet-1234-ABCD" && !$(P2, "resetResult").hidden, "temporary password shown");
+  $(P2, "resetEmail").value = "nobody@x.com";
+  $(P2, "resetForm").dispatchEvent(new P2.Event("submit", { cancelable: true })); await wait(50);
+  ok($(P2, "resetMsg").textContent === "No account with this email" && $(P2, "resetResult").hidden, "unknown email refused");
 }
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

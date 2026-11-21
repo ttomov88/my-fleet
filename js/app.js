@@ -255,6 +255,8 @@ function performTopLevelClose() {
   if (vehicleOverlay.classList.contains("open")) { vehicleOverlay.classList.remove("open"); return; }
   if (categoryPickerOverlay.classList.contains("open")) { categoryPickerOverlay.classList.remove("open"); return; }
   if (restoreOverlay.classList.contains("open")) { restoreOverlay.classList.remove("open"); return; }
+  if (passwordOverlay.classList.contains("open")) { passwordOverlay.classList.remove("open"); return; }
+  if (resetOverlay.classList.contains("open")) { resetOverlay.classList.remove("open"); return; }
   if (state.activeVehicleId) { state.activeVehicleId = null; render(); return; }
   if (state.tab !== "home") { state.tab = "home"; render(); window.scrollTo(0, 0); return; }   // back from a tab goes Home
   // On the home page with nothing open: this press just used up the root sentinel, so the
@@ -650,7 +652,8 @@ function renderUpcoming() {
 const confirmOverlay = document.getElementById("confirmOverlay");
 const confirmOk = document.getElementById("confirmOk");
 let confirmResolve = null;
-function askConfirm({ title, text = "", ok = "OK", danger = false }) {
+function askConfirm({ title, text = "", ok = "OK", danger = false, info = false }) {
+  document.getElementById("confirmCancel").hidden = info;   // info: a message with only OK
   if (confirmResolve) finishConfirm(false);
   document.getElementById("confirmTitle").textContent = title;
   const t = document.getElementById("confirmText");
@@ -1054,7 +1057,8 @@ function updateAccountInfo() {
   document.getElementById("accountInfo").textContent = status;
   document.getElementById("accountEmail").textContent = sync.email || "";
   document.getElementById("profileInitial").textContent = initial;
-  document.getElementById("syncDot").hidden = !waiting;   // small amber dot in the corner while changes wait
+  document.getElementById("syncDot").hidden = !waiting;
+  document.getElementById("adminResetBtn").hidden = sync.email !== ADMIN_EMAIL;   // small amber dot in the corner while changes wait
 }
 
 // The server ("api" function): account creation, notification key, test notification.
@@ -1236,6 +1240,79 @@ async function unsubscribePush() {
   if (sb && sync.userId) await sb.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
   await sub.unsubscribe();
 }
+
+/* ---------------- Passwords ----------------
+   The app sends no emails, so a forgotten password is reset by the administrator, who gets a
+   temporary password from the server and passes it on. Anyone can change their own password. */
+const ADMIN_EMAIL = "ttomov88@gmail.com";
+const passwordOverlay = document.getElementById("passwordOverlay");
+const resetOverlay = document.getElementById("resetOverlay");
+function formMsg(id, text, ok) { const m = document.getElementById(id); m.textContent = text || ""; m.className = ok ? "login-msg ok" : "login-msg"; }
+
+document.getElementById("forgotBtn").onclick = () =>
+  askConfirm({ title: t("forgot_title"), text: t("forgot_text", { admin: ADMIN_EMAIL }), ok: "OK", info: true });
+
+document.getElementById("changePwBtn").onclick = () => {
+  document.getElementById("pwUser").value = sync.email || "";
+  document.getElementById("pwNew").value = "";
+  document.getElementById("pwRepeat").value = "";
+  formMsg("pwMsg", "");
+  passwordOverlay.classList.add("open");
+  pushNav();
+};
+document.getElementById("pwCancel").onclick = () => closeNav();
+document.getElementById("passwordForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const pw = document.getElementById("pwNew").value, again = document.getElementById("pwRepeat").value;
+  if (pw.length < 8 || pw.length > 72) { formMsg("pwMsg", t("err_weak_password")); return; }
+  if (pw !== again) { formMsg("pwMsg", t("pw_mismatch")); return; }
+  const btn = document.getElementById("pwSave");
+  btn.disabled = true;
+  try {
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if (error) { formMsg("pwMsg", error.code === "same_password" || /different/i.test(error.message) ? t("pw_same") : t("connect")); return; }
+    if (passwordOverlay.classList.contains("open")) closeNav();
+    showToast(t("pw_changed"));
+  } catch (err) {
+    formMsg("pwMsg", t("connect"));
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+document.getElementById("adminResetBtn").onclick = () => {
+  document.getElementById("resetEmail").value = "";
+  document.getElementById("resetResult").hidden = true;
+  formMsg("resetMsg", "");
+  resetOverlay.classList.add("open");
+  pushNav();
+};
+document.getElementById("resetClose").onclick = () => closeNav();
+document.getElementById("resetForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("resetEmail").value.trim().toLowerCase();
+  const out = document.getElementById("resetResult");
+  out.hidden = true;
+  if (!email) { formMsg("resetMsg", t("err_invalid_email")); return; }
+  const btn = document.getElementById("resetGo");
+  btn.disabled = true;
+  try {
+    const token = await accessToken();
+    if (!token) { formMsg("resetMsg", t("connect")); return; }
+    const r = await api("adminReset", { email }, token);
+    if (r.password) {
+      out.textContent = r.password;
+      out.hidden = false;
+      formMsg("resetMsg", t("temp_pw_ready", { email }), true);
+    } else {
+      formMsg("resetMsg", r.error === "no_such_member" ? t("no_such_member") : r.error === "forbidden" ? t("not_admin") : t("send_failed"));
+    }
+  } catch (err) {
+    formMsg("resetMsg", t("connect"));
+  } finally {
+    btn.disabled = false;
+  }
+};
 
 /* ---------------- Settings page ---------------- */
 const notifToggle = document.getElementById("notifToggle");

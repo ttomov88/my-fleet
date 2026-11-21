@@ -322,7 +322,7 @@ main[hidden], .page[hidden] { display: none; }
   align-items: flex-end; justify-content: center; z-index: 50;
 }
 .overlay.open { display: flex; animation: fadeIn 0.18s ease-out; }
-.overlay-top { z-index: 80; }
+.overlay-top { z-index: 95; }   /* above the login screen too */
 .modal {
   background: var(--sheet); width: 100%; max-width: 640px; border-radius: 28px 28px 0 0;
   padding: 8px 16px max(18px, env(safe-area-inset-bottom)); max-height: 92vh; overflow-y: auto;
@@ -447,6 +447,13 @@ input:disabled + .slider { opacity: 0.6; }
 .login-sub { color: var(--text-2); font-size: 15px; margin: 0 0 26px; line-height: 1.45; }
 .login-msg { font-size: 14px; color: var(--red); min-height: 20px; margin: 2px 4px 0; }
 .login-msg.ok { color: var(--text-2); }
+.link-btn { background: none; border: none; color: var(--accent); font-size: 14.5px; font-weight: 600; padding: 6px 4px; cursor: pointer; }
+.temp-pw {
+  margin: 4px 0 8px; padding: 16px; border-radius: var(--radius-sm); background: var(--accent-soft);
+  font-size: 22px; font-weight: 700; letter-spacing: 1px; text-align: center; user-select: all; -webkit-user-select: all;
+  font-variant-numeric: tabular-nums;
+}
+.temp-pw[hidden] { display: none; }
 
 /* ---------- Toast ---------- */
 .toast {

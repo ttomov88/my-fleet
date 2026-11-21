@@ -5,6 +5,7 @@
 // POST { action: "publicKey" }                   -> key the phone needs to sign up for notifications
 // POST { action: "test" }  (logged-in user)      -> send a test notification to that person's phones
 // POST { action: "daily" } (x-cron-token header) -> the 08:00 reminder run, called by the scheduler
+// POST { action: "adminReset", email } (administrator) -> temporary password for an invited member
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateVapidKeys, sendPush, type Subscription, type VapidKeys } from "./webpush.ts";
 import { dueEvents, langOf, localNow, reminderMessage, testMessage } from "./reminders.ts";
@@ -116,6 +117,31 @@ async function test(req: Request) {
   return json(result);
 }
 
+// The administrator sets a temporary password for an invited member who forgot theirs
+// (the app sends no emails). Returns the password so it can be passed on.
+const ADMIN_EMAIL = "ttomov88@gmail.com";
+function tempPassword(): string {
+  const digits = "23456789", letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const pick = (set: string, n: number) => Array.from(crypto.getRandomValues(new Uint32Array(n)), x => set[x % set.length]).join("");
+  return `Fleet-${pick(digits, 4)}-${pick(letters, 4)}`;
+}
+async function adminReset(req: Request, body: any) {
+  const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  const { data, error } = await admin.auth.getUser(jwt);
+  if (error || !data?.user) return json({ error: "not_logged_in" }, 401);
+  if ((data.user.email ?? "").toLowerCase() !== ADMIN_EMAIL) return json({ error: "forbidden" }, 403);
+  const email = String(body.email ?? "").trim().toLowerCase();
+  const { data: allow } = await admin.from("allowed_emails").select("email").eq("email", email).maybeSingle();
+  if (!allow) return json({ error: "no_such_member" }, 404);
+  const { data: uid, error: uErr } = await admin.rpc("user_id_of_email", { e: email });
+  if (uErr) throw uErr;
+  if (!uid) return json({ error: "no_such_member" }, 404);
+  const password = tempPassword();
+  const { error: pErr } = await admin.auth.admin.updateUserById(uid as string, { password });
+  if (pErr) throw pErr;
+  return json({ password });
+}
+
 async function daily(req: Request, body: any) {
   const { cron_token } = await configValues(["cron_token"]);
   if (!cron_token || req.headers.get("x-cron-token") !== cron_token) return json({ error: "forbidden" }, 403);
@@ -158,6 +184,7 @@ Deno.serve(async (req) => {
       case "publicKey": return json({ publicKey: (await getVapid()).publicKey });
       case "test": return await test(req);
       case "daily": return await daily(req, body);
+      case "adminReset": return await adminReset(req, body);
       default: return json({ error: "unknown_action" }, 400);
     }
   } catch (e) {
