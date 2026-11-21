@@ -113,7 +113,14 @@ function phone(localData, opts = {}) {
       if (opts.sync) win.localStorage.setItem("fleetlog_sync_v1", JSON.stringify(opts.sync));
       win.supabase = { createClient: () => makeClient(win) };
       win.fetch = fakeFetch;
-      win.confirm = () => (opts.confirm !== undefined ? opts.confirm : true);
+      // The app's own question sheet: answer it automatically (yes unless opts.confirm === false).
+      win.addEventListener("DOMContentLoaded", () => {
+        new win.MutationObserver(() => {
+          const o = win.document.getElementById("confirmOverlay");
+          if (o && o.classList.contains("open")) setTimeout(() => win.document.getElementById(opts.confirm === false ? "confirmCancel" : "confirmOk").click(), 0);
+        }).observe(win.document.getElementById("confirmOverlay"), { attributes: true });
+      });
+      win.matchMedia = () => ({ matches: false, addEventListener() {} });
       win.scrollTo = () => {};
       // fake push support
       const sub = { endpoint: "https://fcm.googleapis.com/fcm/send/" + Math.random(), options: { applicationServerKey: null },
@@ -241,7 +248,6 @@ ok($(C, "loginScreen").hidden && $(C, "main").textContent.includes("Golf"), "ope
 server.offline = false;
 
 console.log("Log out");
-A.confirm = () => true;
 $(A, "logoutBtn").click(); await wait(50);
 ok(!$(A, "loginScreen").hidden, "login screen shown");
 ok(JSON.parse(A.localStorage.getItem("fleetlog_v1")).vehicles.length === 0, "data removed from the phone");
@@ -257,10 +263,10 @@ console.log("Review fixes");
   await wait(50);
   const soonIn = d => { const t = new Date(); t.setDate(t.getDate() + d); return P.eval(`localISO(new Date(${t.getTime()}))`); };
   P.eval(`state.data.vehicles[0].items.maintenance = [{id:"s1",label:"Soon",dueDate:"${soonIn(20)}",lastDate:null,notes:"",done:false}]; state.activeVehicleId = state.data.vehicles[0].id; render();`);
-  ok(P.document.querySelector(".item-badge").classList.contains("badge-amber"), "20 days away is amber with Remind me = 30");
+  ok(P.document.querySelector(".row-value").classList.contains("v-amber"), "20 days away is amber with Remind me = 30");
   P.eval(`document.getElementById("settingsBtn").click()`);
   $(P, "leadDays").value = "14"; $(P, "leadDays").dispatchEvent(new P.Event("change")); await wait(20);
-  ok(P.document.querySelector(".item-badge").classList.contains("badge-green"), "same event turns green with Remind me = 14");
+  ok(P.document.querySelector(".row-value").classList.contains("v-green"), "same event turns green with Remind me = 14");
   // event deleted on another phone while open here
   P.eval(`document.getElementById("settingsClose").click()`); await wait(20);
   P.eval(`openItemModal(state.activeVehicleId, "maintenance", "s1"); state.data.vehicles[0].items.maintenance = [];`);
@@ -275,6 +281,26 @@ console.log("Review fixes");
   P.document.dispatchEvent(new P.Event("visibilitychange")); await wait(50);
   ok(P.eval("state.settings.notifications") === false && !t2.checked, "blocked in phone settings: switch turns off");
   ok(!Object.values(server.subs).some(s => s.user === "u-fam"), "and the server stops sending to it");
+}
+
+console.log("Redesign");
+{
+  const D = phone({ vehicles: [veh("d1", "Golf", { insurance: [ev("x1", "Casco", "2020-01-01")] }), veh("d2", "Vespa")] });
+  await wait(20);
+  await login(D, "new@x.com", "longenough");
+  await wait(50);
+  ok($(D, "main").querySelector(".hero-big").textContent === "1 overdue", "summary card counts overdue events");
+  D.document.querySelector(".hero").click(); await wait(20);
+  const rows = D.document.querySelectorAll("#attentionList .row");
+  ok(rows.length === 1 && rows[0].textContent.includes("Casco"), "tapping it lists what needs attention");
+  rows[0].click(); await wait(20);
+  ok($(D, "itemOverlay").classList.contains("open") && $(D, "itemLabel").value === "Casco" && !$(D, "backBtn").hidden, "a row opens that event on its vehicle page");
+  D.eval(`document.getElementById("settingsBtn").click()`);
+  D.document.querySelector('#themeSeg [data-theme="dark"]').click();
+  ok(D.document.documentElement.dataset.theme === "dark" && JSON.parse(D.localStorage.getItem("fleetlog_settings_v1")).theme === "dark", "dark theme applied and remembered");
+  D.document.querySelector('#themeSeg [data-theme="auto"]').click();
+  ok(!D.document.documentElement.dataset.theme, "auto follows the phone");
+  ok($(D, "avatarInitial").textContent === "N", "avatar shows the account initial");
 }
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

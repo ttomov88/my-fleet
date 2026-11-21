@@ -7,7 +7,6 @@ const CATEGORIES = [
   { key: "inspection", label: "Technical Inspection" }
 ];
 
-const CATEGORY_ACCENT = { maintenance: "#2F9E5B", insurance: "#7FA9E0", inspection: "#E8A33D" };
 const CATEGORY_ICONS = {
   maintenance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2-2 2.6-2.6z"/></svg>',
   insurance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/></svg>',
@@ -75,7 +74,7 @@ function saveData(sync = true) {
   return true;
 }
 
-const DEFAULT_SETTINGS = { notifications: false, leadDays: 30 };
+const DEFAULT_SETTINGS = { notifications: false, leadDays: 30, theme: "auto" };
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
@@ -230,11 +229,7 @@ function vehicleIconSvg(typeKey) {
   return `<svg viewBox="0 0 64 40" fill="currentColor" aria-hidden="true" focusable="false">${t.art}</svg>`;
 }
 
-document.getElementById("brandIcon").innerHTML = vehicleIconSvg("sedan");
 document.getElementById("loginIcon").innerHTML = vehicleIconSvg("sedan");
-document.getElementById("brandHomeBtn").onclick = () => {
-  if (state.activeVehicleId) closeNav();
-};
 
 /* ---------------- Back-gesture / history navigation ----------------
    The app is a single page with no real URLs, so by default there's nothing
@@ -275,6 +270,7 @@ window.addEventListener("popstate", () => {
   clearTimeout(navClosingTimer);
   if (suppressPops > 0) { suppressPops--; return; }
   if (navDepth > 0) navDepth--;
+  if (confirmResolve) { finishConfirm(false); pushNav(); return; }   // back closes only the question
   performTopLevelClose();
 });
 // Close everything and return to the home page in one step, keeping the back-gesture
@@ -299,6 +295,7 @@ function performTopLevelClose() {
   if (vehicleOverlay.classList.contains("open")) { vehicleOverlay.classList.remove("open"); return; }
   if (categoryPickerOverlay.classList.contains("open")) { categoryPickerOverlay.classList.remove("open"); return; }
   if (restoreOverlay.classList.contains("open")) { restoreOverlay.classList.remove("open"); return; }
+  if (attentionOverlay.classList.contains("open")) { attentionOverlay.classList.remove("open"); return; }
   if (settingsOverlay.classList.contains("open")) { settingsOverlay.classList.remove("open"); return; }
   if (state.activeVehicleId) { state.activeVehicleId = null; render(); return; }
   // On the home page with nothing open: this press just used up the root sentinel, so the
@@ -414,167 +411,256 @@ function statusCountBadgeHTML(vehicle) {
   return "";
 }
 
-function renderVehiclePicker() {
-  const wrap = document.createElement("div");
-  wrap.className = "picker";
-  const list = document.createElement("div");
-  list.className = "picker-list";
+const UI_ICONS = {
+  plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>'
+};
+const CATEGORY_AVATAR = { maintenance: "a-green", insurance: "a-blue", inspection: "a-amber" };
+
+// Every not-done event that is overdue or due within the "Remind me" window, soonest first.
+function attentionItems() {
+  const lead = soonDays(), out = [];
+  state.data.vehicles.forEach(v => CATEGORIES.forEach(c => (v.items[c.key] || []).forEach(it => {
+    if (isDone(it)) return;
+    const days = daysUntil(it.dueDate);
+    if (days !== null && days <= lead) out.push({ v, c, it, days });
+  })));
+  return out.sort((a, b) => a.days - b.days);
+}
+// Right-hand value of an event row: short, coloured by urgency.
+function dueValue(item) {
+  if (isDone(item)) return { text: "Done", cls: "v-none" };
+  const days = daysUntil(item.dueDate);
+  if (days === null) return { text: "No date", cls: "v-none" };
+  if (days < 0) return { text: `${-days}d overdue`, cls: "v-red" };
+  if (days === 0) return { text: "Today", cls: "v-amber" };
+  return { text: `${days}d`, cls: days <= soonDays() ? "v-amber" : "v-green" };
+}
+function eventSub(item) {
+  if (isDone(item)) { const on = item.lastDate || item.dueDate; return on ? `Done · ${formatDate(on)}` : "Done"; }
+  return item.dueDate ? `Due ${formatDate(item.dueDate)}` : "No due date";
+}
+function el(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html !== undefined) e.innerHTML = html;
+  return e;
+}
+
+function renderHero(view) {
+  const due = attentionItems();
+  const overdue = due.filter(d => d.days < 0).length, soon = due.length - overdue, lead = soonDays();
+  const hero = el("button", "hero" + (due.length ? "" : " is-calm"));
+  let big, sub;
+  if (overdue) { big = `${overdue} overdue`; sub = soon ? `${soon} more due in the next ${lead} days` : "Tap to see them"; }
+  else if (soon) { const n = due[0]; big = `${soon} due soon`; sub = `Next: ${escapeHtml(n.v.name)} · ${escapeHtml(n.it.label)}, ${n.days === 0 ? "today" : "in " + n.days + "d"}`; }
+  else { big = "All good"; sub = `Nothing due in the next ${lead} days`; }
+  const n = state.data.vehicles.length;
+  hero.innerHTML = `
+    <div class="hero-label">Needs attention</div>
+    <div class="hero-big">${big}</div>
+    <div class="hero-sub">${sub}</div>
+    <div class="hero-pills">
+      ${overdue ? `<span class="hero-pill"><i class="p-red"></i>${overdue} overdue</span>` : ""}
+      ${soon ? `<span class="hero-pill"><i class="p-amber"></i>${soon} soon</span>` : ""}
+      <span class="hero-pill">${n} vehicle${n === 1 ? "" : "s"}</span>
+    </div>`;
+  if (due.length) hero.onclick = () => openAttention();
+  else hero.tabIndex = -1;
+  view.appendChild(hero);
+}
+
+function renderHome(view) {
+  view.appendChild(el("h1", "page-title", "My Fleet"));
+  if (state.data.vehicles.length === 0) {
+    const empty = el("div", "empty-state", `
+      <div class="empty-icon">${vehicleIconSvg("sedan")}</div>
+      <div class="empty-title">No vehicles yet</div>
+      <div class="empty-copy">Add your first vehicle to keep maintenance, insurance and inspection dates in one place.</div>
+      <button class="btn btn-primary" id="emptyAddVehicle">Add a vehicle</button>`);
+    view.appendChild(empty);
+    empty.querySelector("#emptyAddVehicle").onclick = () => openVehicleModal();
+    return;
+  }
+  renderHero(view);
+  const head = el("div", "section-title", "<span>Vehicles</span>");
+  const add = el("button", "pill-btn", "+ Add");
+  add.setAttribute("aria-label", "Add vehicle");
+  add.onclick = () => openVehicleModal();
+  head.appendChild(add);
+  view.appendChild(head);
+  const list = el("div", "group picker-list");
   state.data.vehicles.forEach(v => {
-    const card = document.createElement("div");
-    card.className = "picker-card";
-    const avatar = document.createElement("div");
-    avatar.className = "vtype-icon";
-    avatar.innerHTML = vehicleIconSvg(vehicleTypeOf(v));
-    const info = document.createElement("div");
-    info.className = "picker-card-info";
-    info.innerHTML = `
-      <div class="picker-card-name">${escapeHtml(v.name)}</div>
-      <div class="picker-card-sub">${v.registration ? escapeHtml(v.registration) : "No registration on file"}</div>
-    `;
-    card.appendChild(avatar);
-    card.appendChild(info);
-    card.insertAdjacentHTML("beforeend", statusCountBadgeHTML(v));
-    const grip = document.createElement("span");
-    grip.className = "grip-icon";
-    grip.innerHTML = GRIP_ICON;
-    card.appendChild(grip);
-    const openVehicle = () => { pushNav(); state.activeVehicleId = v.id; render(); };
-    card.setAttribute("role", "button");
-    card.tabIndex = 0;
-    card.onkeydown = (e) => { if (e.target === card && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openVehicle(); } };
-    enableDragReorder(card, list, v.id, openVehicle);
-    list.appendChild(card);
+    const row = el("div", "row tappable picker-card", `
+      <div class="avatar">${vehicleIconSvg(vehicleTypeOf(v))}</div>
+      <div class="row-text">
+        <div class="row-title">${escapeHtml(v.name)}</div>
+        <div class="row-sub">${v.registration ? escapeHtml(v.registration) : "No registration"}</div>
+      </div>
+      ${statusCountBadgeHTML(v)}
+      <span class="chev"></span>`);
+    const openVehicle = () => { pushNav(); state.activeVehicleId = v.id; render(); window.scrollTo(0, 0); };
+    row.setAttribute("role", "button");
+    row.tabIndex = 0;
+    row.onkeydown = (e) => { if (e.target === row && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openVehicle(); } };
+    enableDragReorder(row, list, v.id, openVehicle);
+    list.appendChild(row);
   });
-  wrap.appendChild(list);
-  const addTile = document.createElement("button");
-  addTile.className = "picker-add";
-  addTile.textContent = "+";
-  addTile.setAttribute("aria-label", "Add another vehicle");
-  addTile.title = "Add another vehicle";
-  addTile.onclick = () => openVehicleModal();
-  wrap.appendChild(addTile);
-  mainEl.appendChild(wrap);
+  view.appendChild(list);
+}
+
+function renderVehiclePage(view, vehicle) {
+  view.appendChild(el("div", "vehicle-hero", `
+    <div class="big-avatar">${vehicleIconSvg(vehicleTypeOf(vehicle))}</div>
+    <div class="vh-name">${escapeHtml(vehicle.name)}</div>
+    <div class="vh-sub">${vehicle.registration ? escapeHtml(vehicle.registration) : "No registration"}</div>`));
+
+  const actions = el("div", "actions");
+  const addAct = el("button", "action primary", `<span class="action-circle">${UI_ICONS.plus}</span>Add event`);
+  addAct.onclick = () => openCategoryPicker();
+  const editAct = el("button", "action", `<span class="action-circle">${UI_ICONS.edit}</span>Edit`);
+  editAct.setAttribute("aria-label", "Edit vehicle");
+  editAct.onclick = () => openVehicleEditModal(vehicle.id);
+  actions.append(addAct, editAct);
+  view.appendChild(actions);
+
+  if (vehicle.vin || vehicle.note) {
+    const details = el("div", "group details");
+    if (vehicle.vin) details.appendChild(el("div", "row", `<div class="row-text"><div class="row-title">VIN</div><div class="row-sub">${escapeHtml(vehicle.vin)}</div></div>`));
+    if (vehicle.note) details.appendChild(el("div", "row", `<div class="row-text"><div class="row-title">Note</div><div class="row-sub">${escapeHtml(vehicle.note)}</div></div>`));
+    view.appendChild(details);
+  }
+
+  CATEGORIES.forEach(cat => {
+    const head = el("div", "section-title", `<span class="title-with-icon"><span class="cat-dot avatar ${CATEGORY_AVATAR[cat.key]}">${CATEGORY_ICONS[cat.key]}</span>${cat.label}</span>`);
+    const add = el("button", "pill-btn", "+ Add");
+    add.setAttribute("aria-label", "Add to " + cat.label);
+    add.title = "Add to " + cat.label;
+    add.onclick = () => openItemModal(vehicle.id, cat.key, null);
+    head.appendChild(add);
+    view.appendChild(head);
+
+    const group = el("div", "group");
+    const items = (vehicle.items[cat.key] || []).slice().sort((a, b) => {
+      if (isDone(a) !== isDone(b)) return isDone(a) ? 1 : -1;          // completed events go last
+      const da = daysUntil(a.dueDate), db = daysUntil(b.dueDate);
+      if (da === null && db === null) return 0;
+      if (da === null) return 1; if (db === null) return -1;
+      return isDone(a) ? db - da : da - db;                              // finished: newest first
+    });
+    if (!items.length) group.appendChild(el("div", "row-empty", `No ${cat.label.toLowerCase()} events yet`));
+    items.forEach(item => {
+      const val = dueValue(item);
+      const row = el("div", "row tappable" + (isDone(item) ? " is-done" : ""), `
+        <div class="avatar cat ${CATEGORY_AVATAR[cat.key]}">${CATEGORY_ICONS[cat.key]}</div>
+        <div class="row-text">
+          <div class="row-title">${escapeHtml(item.label)}</div>
+          <div class="row-sub">${eventSub(item)}</div>
+        </div>
+        <div class="row-right"><div class="row-value ${val.cls}">${val.text}</div></div>`);
+      row.setAttribute("role", "button");
+      row.tabIndex = 0;
+      row.onclick = () => openItemModal(vehicle.id, cat.key, item.id);
+      row.onkeydown = (e) => {
+        if (e.target === row && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openItemModal(vehicle.id, cat.key, item.id); }
+      };
+      group.appendChild(row);
+    });
+    view.appendChild(group);
+  });
 }
 
 function renderVehicle() {
   mainEl.innerHTML = "";
   const vehicle = state.data.vehicles.find(v => v.id === state.activeVehicleId);
-
-  if (!vehicle) {
-    if (state.data.vehicles.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "empty-state";
-      empty.innerHTML = `
-        <div class="empty-icon">${vehicleIconSvg("sedan")}</div>
-        <div class="empty-title">No vehicles yet</div>
-        <div class="empty-copy">Add your first vehicle to start tracking maintenance, insurance, and inspection dates in one place.</div>
-        <button id="emptyAddVehicle">+ Add your first vehicle</button>
-      `;
-      mainEl.appendChild(empty);
-      document.getElementById("emptyAddVehicle").onclick = () => openVehicleModal();
-      return;
-    }
-    renderVehiclePicker();
-    return;
-  }
-
-  const header = document.createElement("div");
-  header.className = "vehicle-header";
-  const subLine = vehicle.registration ? escapeHtml(vehicle.registration) : "No registration on file";
-  header.innerHTML = `
-    <div class="vtype-icon">${vehicleIconSvg(vehicleTypeOf(vehicle))}</div>
-    <div>
-      <div class="vh-name">${escapeHtml(vehicle.name)}</div>
-      <div class="vh-sub">${subLine}</div>
-    </div>
-  `;
-  const renameBtn = document.createElement("button");
-  renameBtn.className = "rename-btn";
-  renameBtn.innerHTML = "&#9998;";
-  renameBtn.setAttribute("aria-label", "Edit vehicle");
-  renameBtn.onclick = () => openVehicleEditModal(vehicle.id);
-  header.appendChild(renameBtn);
-  mainEl.appendChild(header);
-
-  if (vehicle.vin || vehicle.note) {
-    const meta = document.createElement("div");
-    meta.className = "vehicle-meta";
-    let rows = "";
-    if (vehicle.vin) rows += `<div class="meta-row"><span class="meta-label">VIN</span><span class="meta-value">${escapeHtml(vehicle.vin)}</span></div>`;
-    if (vehicle.note) rows += `<div class="meta-row"><span class="meta-label">Note</span><span class="meta-value">${escapeHtml(vehicle.note)}</span></div>`;
-    meta.innerHTML = rows;
-    mainEl.appendChild(meta);
-  }
-
-  CATEGORIES.forEach(cat => {
-    const section = document.createElement("div");
-    section.className = "section";
-    section.style.setProperty("--cat-accent", CATEGORY_ACCENT[cat.key]);
-    const head = document.createElement("div");
-    head.className = "section-head";
-    head.innerHTML = `<div class="section-head-title"><span class="cat-icon" style="color:${CATEGORY_ACCENT[cat.key]}">${CATEGORY_ICONS[cat.key]}</span><h2>${cat.label}</h2></div>`;
-    const addBtn = document.createElement("button");
-    addBtn.textContent = "+";
-    addBtn.setAttribute("aria-label", "Add to " + cat.label);
-    addBtn.title = "Add to " + cat.label;
-    addBtn.onclick = () => openItemModal(vehicle.id, cat.key, null);
-    head.appendChild(addBtn);
-    section.appendChild(head);
-
-    const items = (vehicle.items[cat.key] || []).slice().sort((a,b) => {
-      if (isDone(a) !== isDone(b)) return isDone(a) ? 1 : -1;          // completed events go last
-      const da = daysUntil(a.dueDate); const db = daysUntil(b.dueDate);
-      if (da === null && db === null) return 0;
-      if (da === null) return 1; if (db === null) return -1;
-      return isDone(a) ? db - da : da - db;                              // finished: newest first
-    });
-
-    if (items.length === 0) {
-      const hint = document.createElement("div");
-      hint.className = "empty-hint";
-      hint.textContent = `No ${cat.label.toLowerCase()} events yet.`;
-      section.appendChild(hint);
-    } else {
-      items.forEach(item => {
-        const days = daysUntil(item.dueDate);
-        const done = isDone(item);
-        const card = document.createElement("div");
-        card.className = done ? "item-card is-done" : "item-card";
-        const doneOn = item.lastDate || item.dueDate;
-        card.innerHTML = `
-          <div class="item-badge ${done ? "badge-none" : statusClass(days)}"></div>
-          <div class="item-main">
-            <div class="label">${escapeHtml(item.label)}</div>
-            <div class="sub">${done ? (doneOn ? "Done · " + formatDate(doneOn) : "Done") : humanDue(days, item.dueDate)}</div>
-          </div>
-        `;
-        // Whole card = edit. Only one explicit action lives on it: Done.
-        card.setAttribute("role", "button");
-        card.tabIndex = 0;
-        card.onclick = () => openItemModal(vehicle.id, cat.key, item.id);
-        card.onkeydown = (e) => {
-          if (e.target === card && (e.key === "Enter" || e.key === " ")) {
-            e.preventDefault();
-            openItemModal(vehicle.id, cat.key, item.id);
-          }
-        };
-        section.appendChild(card);
-      });
-    }
-    mainEl.appendChild(section);
-  });
+  const view = el("div", "view");
+  if (vehicle) renderVehiclePage(view, vehicle); else renderHome(view);
+  mainEl.appendChild(view);
 }
 
 function escapeHtml(s) {
   return (s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
+/* ---------------- App bar ---------------- */
+const appbarEl = document.querySelector(".appbar");
+const backBtn = document.getElementById("backBtn");
+backBtn.onclick = () => { if (state.activeVehicleId) closeNav(); };
+function updateAppbar() {
+  const vehicle = state.data.vehicles.find(v => v.id === state.activeVehicleId);
+  document.getElementById("settingsBtn").hidden = !!vehicle;
+  backBtn.hidden = !vehicle;
+  document.getElementById("appbarTitle").textContent = vehicle ? vehicle.name : "My Fleet";
+}
+window.addEventListener("scroll", () => appbarEl.classList.toggle("scrolled", window.scrollY > 48), { passive: true });
+
 let lastRenderDay = null;
 function render() {
   lastRenderDay = localISO();
   renderVehicle();
-  updateFabVisibility();
+  updateAppbar();
 }
+
+/* ---------------- Needs attention ---------------- */
+const attentionOverlay = document.getElementById("attentionOverlay");
+function openAttention() {
+  const list = document.getElementById("attentionList");
+  list.innerHTML = "";
+  attentionItems().forEach(({ v, c, it }) => {
+    const val = dueValue(it);
+    const row = el("button", "row row-btn", `
+      <div class="avatar ${val.cls === "v-red" ? "a-red" : "a-amber"}">${vehicleIconSvg(vehicleTypeOf(v))}</div>
+      <div class="row-text">
+        <div class="row-title">${escapeHtml(it.label)}</div>
+        <div class="row-sub">${escapeHtml(v.name)} · ${c.label}</div>
+      </div>
+      <div class="row-right"><div class="row-value ${val.cls}">${val.text}</div></div>`);
+    row.onclick = () => {
+      if (navClosing || !attentionOverlay.classList.contains("open")) return;
+      attentionOverlay.classList.remove("open");
+      state.activeVehicleId = v.id;          // the attention entry becomes the vehicle page entry
+      render();
+      window.scrollTo(0, 0);
+      replaceNav();
+      openItemModal(v.id, c.key, it.id);
+    };
+    list.appendChild(row);
+  });
+  attentionOverlay.classList.add("open");
+  pushNav();
+}
+document.getElementById("attentionClose").onclick = () => closeNav();
+
+/* ---------------- Confirm sheet (replaces the browser's confirm box) ---------------- */
+const confirmOverlay = document.getElementById("confirmOverlay");
+const confirmOk = document.getElementById("confirmOk");
+let confirmResolve = null;
+function askConfirm({ title, text = "", ok = "OK", danger = false }) {
+  if (confirmResolve) finishConfirm(false);
+  document.getElementById("confirmTitle").textContent = title;
+  const t = document.getElementById("confirmText");
+  t.textContent = text;
+  t.hidden = !text;
+  confirmOk.textContent = ok;
+  confirmOk.className = "btn " + (danger ? "btn-danger" : "btn-primary");
+  confirmOverlay.classList.add("open");
+  return new Promise(resolve => { confirmResolve = resolve; });
+}
+function finishConfirm(answer) {
+  if (!confirmResolve) return;
+  const resolve = confirmResolve;
+  confirmResolve = null;
+  confirmOverlay.classList.remove("open");
+  resolve(answer);
+}
+confirmOk.onclick = () => finishConfirm(true);
+document.getElementById("confirmCancel").onclick = () => finishConfirm(false);
+confirmOverlay.addEventListener("click", (e) => { if (e.target === confirmOverlay) finishConfirm(false); });
+
+// Tapping the dimmed area above a sheet closes it, like Cancel.
+document.querySelectorAll(".overlay:not(#confirmOverlay)").forEach(o => {
+  o.addEventListener("click", (e) => { if (e.target === o && o.classList.contains("open")) closeNav(); });
+});
 
 /* ---------------- Item modal ---------------- */
 const itemOverlay = document.getElementById("itemOverlay");
@@ -647,13 +733,14 @@ function saveItemForm() {
   render();
 }
 document.getElementById("itemSave").onclick = () => saveItemForm();
-document.getElementById("itemDelete").onclick = () => {
+document.getElementById("itemDelete").onclick = async () => {
   if (navClosing || !state.editing || !itemOverlay.classList.contains("open")) return;
   const { vehicleId, category, itemId } = state.editing;
   const vehicle = state.data.vehicles.find(v => v.id === vehicleId);
   const item = vehicle && vehicle.items[category].find(i => i.id === itemId);
   if (!item) { showToast("This was deleted on another phone"); goToRoot(); return; }
-  if (!confirm(`Delete "${item.label}"? You can get it back from Settings > Restore point.`)) return;
+  if (!(await askConfirm({ title: `Delete "${item.label}"?`, text: "You can get it back from Settings > Restore point.", ok: "Delete", danger: true }))) return;
+  if (!itemOverlay.classList.contains("open") || !vehicle.items[category].includes(item)) return;
   vehicle.items[category] = vehicle.items[category].filter(i => i.id !== itemId);
   saveData();
   closeItemModal();
@@ -668,7 +755,8 @@ function openCategoryPicker() {
   CATEGORIES.forEach(cat => {
     const btn = document.createElement("button");
     btn.className = "category-pick-item";
-    btn.innerHTML = `<span class="cat-icon" style="color:${CATEGORY_ACCENT[cat.key]}">${CATEGORY_ICONS[cat.key]}</span><span>${cat.label}</span>`;
+    btn.className = "row row-btn";
+    btn.innerHTML = `<div class="avatar cat ${CATEGORY_AVATAR[cat.key]}">${CATEGORY_ICONS[cat.key]}</div><div class="row-text"><div class="row-title">${cat.label}</div></div><span class="chev"></span>`;
     btn.onclick = () => {
       if (navClosing || !categoryPickerOverlay.classList.contains("open")) return;
       categoryPickerOverlay.classList.remove("open");
@@ -680,15 +768,6 @@ function openCategoryPicker() {
   pushNav();
 }
 document.getElementById("categoryPickCancel").onclick = () => closeNav();
-
-document.getElementById("fabAdd").onclick = () => {
-  if (!state.activeVehicleId) { openVehicleModal(); return; }
-  openCategoryPicker();
-};
-
-function updateFabVisibility() {
-  document.getElementById("fabAdd").style.display = state.activeVehicleId ? "flex" : "none";
-}
 
 /* ---------------- Vehicle modal (add / rename / delete) ---------------- */
 const vehicleOverlay = document.getElementById("vehicleOverlay");
@@ -777,10 +856,12 @@ document.getElementById("vehicleSave").onclick = () => {
   }
 };
 
-document.getElementById("vehicleDelete").onclick = () => {
+document.getElementById("vehicleDelete").onclick = async () => {
   if (navClosing || !editingVehicleId || !vehicleOverlay.classList.contains("open")) return;
   const v = state.data.vehicles.find(x => x.id === editingVehicleId);
-  if (!v || !confirm(`Delete "${v.name}" and all its events? You can get it back from Settings > Restore point.`)) return;
+  if (!v) return;
+  if (!(await askConfirm({ title: `Delete "${v.name}"?`, text: "All its events go too. You can get them back from Settings > Restore point.", ok: "Delete", danger: true }))) return;
+  if (!vehicleOverlay.classList.contains("open") || !state.data.vehicles.includes(v)) return;
   state.data.vehicles = state.data.vehicles.filter(x => x.id !== editingVehicleId);
   saveData();
   goToRoot();                       // the vehicle you were on is gone: back to the home page
@@ -924,7 +1005,9 @@ async function firstSync(user) {
     else {
       const known = new Set(remote.vehicles.map(v => v.id));
       const extra = local.vehicles.filter(v => !known.has(v.id));
-      if (extra.length && confirm(`This phone has ${extra.length} vehicle${extra.length === 1 ? "" : "s"} that ${extra.length === 1 ? "isn't" : "aren't"} in the account. Add ${extra.length === 1 ? "it" : "them"} to the account?`)) {
+      if (extra.length && await askConfirm({
+        title: `Add ${extra.length} vehicle${extra.length === 1 ? "" : "s"} from this phone?`,
+        text: `This phone has ${extra.length === 1 ? "a vehicle that isn't" : "vehicles that aren't"} in the account yet.`, ok: "Add to account" })) {
         result = { vehicles: [...remote.vehicles, ...extra] };
         upload = true;
       }
@@ -941,10 +1024,14 @@ async function firstSync(user) {
 }
 
 function updateAccountInfo() {
-  const el = document.getElementById("accountInfo");
-  if (!el) return;
-  const status = !sync.userId ? "" : sync.dirty ? (syncFailed || !navigator.onLine ? "Changes wait for internet" : "Saving…") : "All changes saved";
-  el.textContent = sync.email ? `${sync.email} · ${status}` : "Not logged in";
+  const waiting = !!sync.userId && !!sync.dirty && (syncFailed || !navigator.onLine);
+  const status = !sync.userId ? "Not logged in" : sync.dirty ? (waiting ? "Changes wait for internet" : "Saving…") : "All changes saved";
+  const initial = sync.email ? sync.email.trim()[0].toUpperCase() : "·";
+  document.getElementById("accountInfo").textContent = status;
+  document.getElementById("accountEmail").textContent = sync.email || "";
+  document.getElementById("avatarInitial").textContent = initial;
+  document.getElementById("profileInitial").textContent = initial;
+  document.getElementById("syncDot").hidden = !waiting;   // small amber dot in the corner while changes wait
 }
 
 // The server ("api" function): account creation, notification key, test notification.
@@ -1060,9 +1147,9 @@ async function saveMemberSettings() {
 let loggingOut = false;
 document.getElementById("logoutBtn").onclick = async () => {
   const msg = sync.dirty
-    ? "Some changes haven't reached the account yet and will be lost. Log out anyway?"
-    : "Log out? Your data stays in the account.";
-  if (!confirm(msg)) return;
+    ? "Some changes haven't reached the account yet and will be lost."
+    : "Your data stays in the account.";
+  if (!(await askConfirm({ title: "Log out?", text: msg, ok: "Log out", danger: true }))) return;
   loggingOut = true;
   try { await withTimeout(unsubscribePush(), 6000); } catch (e) {}
   try { await sb.auth.signOut({ scope: "local" }); } catch (e) {}
@@ -1071,7 +1158,7 @@ document.getElementById("logoutBtn").onclick = async () => {
   saveSync();
   state.data = { vehicles: [] };
   saveData(false);
-  state.settings = { ...DEFAULT_SETTINGS };
+  state.settings = { ...DEFAULT_SETTINGS, theme: state.settings.theme };   // the theme belongs to the phone
   saveSettings();
   loggingOut = false;
   goToRoot();
@@ -1137,6 +1224,22 @@ document.getElementById("settingsBtn").onclick = () => {
   pushNav();
 };
 document.getElementById("settingsClose").onclick = () => closeNav();
+
+/* ---------------- Theme: Auto (follows the phone) / Light / Dark ---------------- */
+const darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+function applyTheme() {
+  const t = ["light", "dark"].includes(state.settings.theme) ? state.settings.theme : "auto";
+  if (t === "auto") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = t;
+  document.querySelectorAll("#themeSeg button").forEach(b => b.setAttribute("aria-checked", b.dataset.theme === t ? "true" : "false"));
+  const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+  if (bg) document.getElementById("themeColor").setAttribute("content", bg);   // phone status bar matches
+}
+document.querySelectorAll("#themeSeg button").forEach(b => {
+  b.onclick = () => { state.settings.theme = b.dataset.theme; saveSettings(); applyTheme(); };
+});
+if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener("change", applyTheme);
+applyTheme();
 
 notifToggle.onchange = async () => {
   const on = notifToggle.checked;
@@ -1216,12 +1319,12 @@ document.getElementById("importFile").onchange = (e) => {
   e.target.value = "";
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     let data = null;
     try { data = normalizeData(JSON.parse(reader.result)); } catch (err) {}
     if (!data) { showToast("That file isn't a My Fleet backup"); return; }
     const n = data.vehicles.length;
-    if (!confirm(`Replace everything in the app with this backup (${n} vehicle${n === 1 ? "" : "s"})?`)) return;
+    if (!(await askConfirm({ title: "Replace everything?", text: `The app will contain only this backup (${n} vehicle${n === 1 ? "" : "s"}).`, ok: "Replace", danger: true }))) return;
     state.data = data;
     if (!saveData()) return;
     goToRoot();
@@ -1267,11 +1370,11 @@ document.getElementById("restoreBtn").onclick = async () => {
     const t = Date.parse(p.created_at);
     const isNow = !!data && same(data, state.data);
     const btn = document.createElement("button");
-    btn.className = "restore-item";
+    btn.className = "row row-btn restore-item";
     btn.disabled = isNow || !data;
-    btn.innerHTML = `<span class="when">${restoreLabel(t)}${isNow ? " · now" : ""}</span><span class="what">${restoreSummary(data)}</span>`;
-    btn.onclick = () => {
-      if (!confirm(`Go back to ${restoreLabel(t)}? Changes made after it will be replaced.`)) return;
+    btn.innerHTML = `<div class="row-text"><div class="row-title">${restoreLabel(t)}${isNow ? " · now" : ""}</div><div class="row-sub">${restoreSummary(data)}</div></div>${isNow ? "" : '<span class="chev"></span>'}`;
+    btn.onclick = async () => {
+      if (!(await askConfirm({ title: `Go back to ${restoreLabel(t)}?`, text: "Changes made after it will be replaced. This step can be undone from the same list.", ok: "Restore" }))) return;
       state.data = data;
       if (!saveData()) return;          // the restored data becomes the newest version in the account
       goToRoot();
@@ -1323,6 +1426,7 @@ async function startAccount() {
 
 /* ---------------- Init ---------------- */
 render();
+updateAccountInfo();
 restoreRootSentinel(); // root sentinel, so the first back press on the home page can be caught
 if (dataLoadProblem) showToast("Saved data couldn't be read. Import a backup to restore");
 // One-time cleanup of the removed photo/document feature: save the data without the old

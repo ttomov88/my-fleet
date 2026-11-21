@@ -4,34 +4,57 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>My Fleet</title>
-<meta name="theme-color" content="#0F2547" />
+<meta name="theme-color" content="#F2F3F7" id="themeColor" />
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="icons/icon-192.png" />
 <link rel="apple-touch-icon" href="icons/icon-180-maskable.png" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<script>
+  // Theme before first paint, so there is no light flash in dark mode.
+  try {
+    var t = (JSON.parse(localStorage.getItem("fleetlog_settings_v1") || "{}").theme) || "auto";
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (e) {}
+</script>
+<link rel="preload" href="vendor/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="css/app.css" />
 </head>
 <body>
 <div id="app">
-  <header class="topbar">
-    <button class="brand" id="brandHomeBtn" aria-label="Go to home screen">
-      <span class="brand-icon" id="brandIcon"></span>
-      <span class="brand-title">My Fleet</span>
-    </button>
-    <button class="icon-btn" id="settingsBtn" aria-label="Settings">&#9881;</button>
+  <header class="appbar">
+    <div class="appbar-left">
+      <button class="round-btn avatar-btn" id="settingsBtn" aria-label="Settings"><span id="avatarInitial">·</span></button>
+      <button class="round-btn" id="backBtn" aria-label="Back" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+    </div>
+    <div class="appbar-title" id="appbarTitle"></div>
+    <div class="appbar-right">
+      <span class="sync-dot" id="syncDot" title="Changes wait for internet" hidden></span>
+    </div>
   </header>
 
   <main id="main"></main>
+</div>
 
-  <button class="fab" id="fabAdd" aria-label="Add event">+</button>
+<div class="overlay" id="attentionOverlay">
+  <div class="modal">
+    <div class="sheet-grab"></div>
+    <h3>Needs attention</h3>
+    <div class="group" id="attentionList"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="attentionClose">Close</button>
+    </div>
+  </div>
 </div>
 
 <div class="overlay" id="categoryPickerOverlay">
   <div class="modal">
-    <h3>Add event to&hellip;</h3>
-    <div class="category-pick-list" id="categoryPickList"></div>
+    <div class="sheet-grab"></div>
+    <h3>Add event</h3>
+    <div class="group" id="categoryPickList"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" id="categoryPickCancel">Cancel</button>
     </div>
@@ -40,123 +63,142 @@
 
 <div class="overlay" id="itemOverlay">
   <div class="modal">
+    <div class="sheet-grab"></div>
     <h3 id="itemModalTitle">Add event</h3>
     <div class="field">
       <label for="itemLabel">Name</label>
-      <input id="itemLabel" />
+      <input id="itemLabel" autocomplete="off" />
     </div>
-    <div class="field">
-      <label for="itemLast">Last done</label>
-      <input id="itemLast" type="date" />
-    </div>
-    <div class="field">
-      <label for="itemDue">Next due</label>
-      <input id="itemDue" type="date" />
+    <div class="field-row">
+      <div class="field">
+        <label for="itemLast">Last done</label>
+        <input id="itemLast" type="date" />
+      </div>
+      <div class="field">
+        <label for="itemDue">Next due</label>
+        <input id="itemDue" type="date" />
+      </div>
     </div>
     <div class="field">
       <label for="itemNotes">Notes</label>
-      <input id="itemNotes" />
+      <input id="itemNotes" autocomplete="off" />
     </div>
-    <div class="modal-actions" id="itemStateRow" style="display:none;">
-      <button class="btn btn-done" id="itemDoneBtn" aria-pressed="false">Done</button>
-      <button class="btn btn-secondary" id="itemRenewBtn">&#8635; Renew</button>
+    <div class="chip-row" id="itemStateRow" style="display:none;">
+      <button class="chip chip-done" id="itemDoneBtn" aria-pressed="false">Done</button>
+      <button class="chip" id="itemRenewBtn">&#8635; Renew for a year</button>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" id="itemCancel">Cancel</button>
       <button class="btn btn-primary" id="itemSave">Save</button>
     </div>
     <div class="modal-actions" id="itemDeleteRow" style="display:none;">
-      <button class="btn btn-danger" id="itemDelete">Delete event</button>
+      <button class="btn btn-text-danger" id="itemDelete">Delete event</button>
     </div>
   </div>
 </div>
 
 <div class="overlay" id="vehicleOverlay">
   <div class="modal">
+    <div class="sheet-grab"></div>
     <h3 id="vehicleModalTitle">Add vehicle</h3>
     <div class="field">
-      <label>Vehicle type</label>
+      <label>Type</label>
       <div class="type-grid" id="vehicleTypeGrid" role="group" aria-label="Vehicle type"></div>
     </div>
     <div class="field">
-      <label for="vehicleName">Vehicle name</label>
-      <input id="vehicleName" />
+      <label for="vehicleName">Name</label>
+      <input id="vehicleName" autocomplete="off" />
     </div>
-    <div class="field">
-      <label for="vehicleReg">Registration number</label>
-      <input id="vehicleReg" />
-    </div>
-    <div class="field">
-      <label for="vehicleVin">VIN</label>
-      <input id="vehicleVin" style="text-transform:uppercase;" />
+    <div class="field-row">
+      <div class="field">
+        <label for="vehicleReg">Registration</label>
+        <input id="vehicleReg" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="vehicleVin">VIN</label>
+        <input id="vehicleVin" autocomplete="off" style="text-transform:uppercase;" />
+      </div>
     </div>
     <div class="field">
       <label for="vehicleNote">Note (optional)</label>
-      <textarea id="vehicleNote" rows="3"></textarea>
+      <textarea id="vehicleNote" rows="2"></textarea>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" id="vehicleCancel">Cancel</button>
       <button class="btn btn-primary" id="vehicleSave">Save</button>
     </div>
     <div class="modal-actions" id="vehicleDeleteRow" style="display:none;">
-      <button class="btn btn-danger" id="vehicleDelete">Delete vehicle</button>
+      <button class="btn btn-text-danger" id="vehicleDelete">Delete vehicle</button>
     </div>
   </div>
 </div>
 
 <div class="overlay" id="settingsOverlay">
   <div class="modal">
-    <h3>Settings</h3>
-    <div class="settings-row">
-      <div class="label-block">
-        <div class="t">Account</div>
-        <div class="s" id="accountInfo"></div>
+    <div class="sheet-grab"></div>
+    <div class="profile">
+      <div class="profile-avatar" id="profileInitial">·</div>
+      <div class="profile-text">
+        <div class="profile-email" id="accountEmail"></div>
+        <div class="profile-status" id="accountInfo"></div>
       </div>
-      <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="logoutBtn">Log out</button>
     </div>
-    <div class="settings-row">
-      <div class="label-block">
-        <div class="t">Reminder notifications</div>
-        <div class="s">Every day at 08:00</div>
+
+    <div class="group-title">Reminders</div>
+    <div class="group">
+      <div class="row">
+        <div class="row-text"><div class="row-title">Notifications</div><div class="row-sub">Every day at 08:00</div></div>
+        <label class="switch">
+          <input type="checkbox" id="notifToggle" aria-label="Reminder notifications" />
+          <span class="slider"></span>
+        </label>
       </div>
-      <label class="switch">
-        <input type="checkbox" id="notifToggle" aria-label="Reminder notifications" />
-        <span class="slider"></span>
-      </label>
+      <div class="row">
+        <div class="row-text"><div class="row-title">Remind me</div></div>
+        <select id="leadDays" class="row-select" aria-label="Remind me">
+          <option value="7">7 days before</option>
+          <option value="14">14 days before</option>
+          <option value="30" selected>30 days before</option>
+        </select>
+      </div>
+      <button class="row row-btn" id="testNotifBtn">
+        <div class="row-text"><div class="row-title">Send a test notification</div></div>
+        <span class="chev"></span>
+      </button>
     </div>
-    <div class="settings-row">
-      <div class="label-block">
-        <div class="t">Remind me</div>
+
+    <div class="group-title">Appearance</div>
+    <div class="group">
+      <div class="row">
+        <div class="row-text"><div class="row-title">Theme</div></div>
+        <div class="segmented" id="themeSeg" role="radiogroup" aria-label="Theme">
+          <button role="radio" data-theme="auto">Auto</button>
+          <button role="radio" data-theme="light">Light</button>
+          <button role="radio" data-theme="dark">Dark</button>
+        </div>
       </div>
-      <select id="leadDays" aria-label="Remind me" style="width:150px; padding:8px; border-radius:8px; border:1px solid var(--border); background: var(--cream);">
-        <option value="7">7 days before</option>
-        <option value="14">14 days before</option>
-        <option value="30" selected>30 days before</option>
-      </select>
     </div>
-    <div class="settings-row">
-      <div class="label-block">
-        <div class="t">Test notification</div>
-      </div>
-      <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="testNotifBtn">Send</button>
+
+    <div class="group-title">Data</div>
+    <div class="group">
+      <button class="row row-btn" id="restoreBtn">
+        <div class="row-text"><div class="row-title">Restore point</div><div class="row-sub">Go back to an earlier version</div></div>
+        <span class="chev"></span>
+      </button>
+      <button class="row row-btn" id="exportBtn">
+        <div class="row-text"><div class="row-title">Export backup</div></div>
+        <span class="chev"></span>
+      </button>
+      <button class="row row-btn" id="importBtn">
+        <div class="row-text"><div class="row-title">Import backup</div></div>
+        <span class="chev"></span>
+      </button>
     </div>
-    <div class="settings-row">
-      <div class="label-block">
-        <div class="t">Restore point</div>
-      </div>
-      <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="restoreBtn">Restore</button>
-    </div>
-    <div class="settings-row">
-      <div class="label-block">
-        <div class="t">Export backup</div>
-      </div>
-      <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="exportBtn">Export</button>
-    </div>
-    <div class="settings-row">
-      <div class="label-block">
-        <div class="t">Import backup</div>
-      </div>
-      <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="importBtn">Import</button>
+
+    <div class="group">
+      <button class="row row-btn row-danger" id="logoutBtn">
+        <div class="row-text"><div class="row-title">Log out</div></div>
+      </button>
     </div>
     <input type="file" id="importFile" accept="application/json" style="display:none;" />
     <div class="modal-actions">
@@ -167,17 +209,31 @@
 
 <div class="overlay" id="restoreOverlay">
   <div class="modal">
+    <div class="sheet-grab"></div>
     <h3>Restore point</h3>
-    <div class="restore-list" id="restoreList"></div>
+    <div class="group restore-list" id="restoreList"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" id="restoreClose">Cancel</button>
     </div>
   </div>
 </div>
 
+<div class="overlay overlay-top" id="confirmOverlay" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="modal confirm-sheet">
+    <h3 id="confirmTitle"></h3>
+    <p class="confirm-text" id="confirmText"></p>
+    <div class="modal-actions modal-actions-stack">
+      <button class="btn btn-primary" id="confirmOk">OK</button>
+      <button class="btn btn-secondary" id="confirmCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div id="loginScreen" hidden>
   <form class="login-card" id="loginForm" novalidate>
-    <div class="login-brand"><span class="brand-icon" id="loginIcon"></span><span>My Fleet</span></div>
+    <div class="login-logo" id="loginIcon"></div>
+    <h1 class="login-title">My Fleet</h1>
+    <p class="login-sub">Vehicles, insurance and inspections. Shared with your family.</p>
     <div class="field">
       <label for="loginEmail">Email</label>
       <input id="loginEmail" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" />
@@ -187,9 +243,9 @@
       <input id="loginPassword" type="password" autocomplete="current-password" minlength="8" />
     </div>
     <div class="login-msg" id="loginMsg" role="alert"></div>
-    <div class="modal-actions">
-      <button type="button" class="btn btn-secondary" id="registerBtn">Create account</button>
+    <div class="modal-actions modal-actions-stack">
       <button type="submit" class="btn btn-primary" id="loginBtn">Log in</button>
+      <button type="button" class="btn btn-secondary" id="registerBtn">Create account</button>
     </div>
   </form>
 </div>
