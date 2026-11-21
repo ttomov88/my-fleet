@@ -336,5 +336,16 @@ console.log("Bulgarian");
   await wait(20);
   ok(dom.window.document.getElementById("loginBtn").textContent === "Вход", "Bulgarian is the default");
 }
+
+console.log("Second review");
+{
+  const S = phone({ vehicles: [veh("s1", "Golf")] });
+  await wait(20);
+  await login(S, "new@x.com", "longenough"); await wait(50);
+  S.eval(`state.activeVehicleId = "s1"; render(); openItemModal("s1", "maintenance", null)`);
+  $(S, "itemLabel").value = "Typed but not saved";
+  $(S, "itemOverlay").dispatchEvent(new S.MouseEvent("click", { bubbles: true }));
+  ok($(S, "itemOverlay").classList.contains("open") && $(S, "itemLabel").value === "Typed but not saved", "a stray tap outside the event form keeps what was typed");
+}
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

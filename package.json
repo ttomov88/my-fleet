@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Tests for the My Fleet app and its server function. The app itself needs no build step.",
   "scripts": {
-    "test": "node tests/app.test.mjs && node tests/reminders.test.mjs && node tests/webpush.test.mjs"
+    "test": "node tests/app.test.mjs && node tests/reminders.test.mjs && node tests/webpush.test.mjs && node tests/sw.test.mjs"
   },
   "devDependencies": {
     "http_ece": "^1.2.1",

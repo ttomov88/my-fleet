@@ -647,8 +647,9 @@ confirmOk.onclick = () => finishConfirm(true);
 document.getElementById("confirmCancel").onclick = () => finishConfirm(false);
 confirmOverlay.addEventListener("click", (e) => { if (e.target === confirmOverlay) finishConfirm(false); });
 
-// Tapping the dimmed area above a sheet closes it, like Cancel.
-document.querySelectorAll(".overlay:not(#confirmOverlay)").forEach(o => {
+// Tapping the dimmed area above a sheet closes it, like Cancel. Not for the event and vehicle
+// forms: a stray tap there would throw away what was typed.
+document.querySelectorAll("#attentionOverlay, #categoryPickerOverlay, #settingsOverlay, #restoreOverlay").forEach(o => {
   o.addEventListener("click", (e) => { if (e.target === o && o.classList.contains("open")) closeNav(); });
 });
 
@@ -1411,7 +1412,14 @@ document.addEventListener("visibilitychange", () => {
   if (sync.userId) checkNotificationState();
 });
 window.addEventListener("online", () => syncNow());
-setInterval(() => { if (document.visibilityState === "visible" && sync.dirty) syncNow(); }, 60000);
+// While the app is open: send waiting changes every minute, and look for changes from other
+// phones every 2 minutes (a quick read, nothing is sent when nothing changed).
+let syncTicks = 0;
+setInterval(() => {
+  if (document.visibilityState !== "visible") return;
+  syncTicks++;
+  if (sync.dirty || syncTicks % 2 === 0) syncNow();
+}, 60000);
 
 async function startAccount() {
   if (!sb) { if (!sync.userId) showLogin(t("err_not_loaded")); return; }
