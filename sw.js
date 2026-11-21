@@ -1,7 +1,8 @@
 // Bump CACHE_NAME whenever icons, manifest.json or vendor/ change: those are served cache-first.
-const CACHE_NAME = "fleet-log-v5";
+// The app's own code (index.html, css/, js/) is network-first, so updates show up right away.
+const CACHE_NAME = "fleet-log-v6";
 // The app itself: these must download for a new version to install.
-const CORE = ["./", "./index.html", "./manifest.json", "./vendor/supabase.js"];
+const CORE = ["./", "./index.html", "./css/app.css", "./js/app.js", "./manifest.json", "./vendor/supabase.js"];
 // Nice to have offline. A missing or misplaced icon must never block an app update.
 const OPTIONAL = [
   "./icons/icon-192.png",
@@ -38,10 +39,11 @@ self.addEventListener("fetch", (event) => {
   // Only the app's own files. Account data (Supabase) must always come fresh from the network.
   if (new URL(event.request.url).origin !== self.location.origin) return;
   const isPage = event.request.mode === "navigate" || event.request.destination === "document";
+  const isAppCode = isPage || /\/(css|js)\/[^/]+$/.test(new URL(event.request.url).pathname);
 
-  if (isPage) {
-    // Network-first for the app's HTML so updates show up immediately; the cached copy is
-    // only used offline (falling back to index.html if this exact URL was never cached).
+  if (isAppCode) {
+    // Network-first for the app's own code so updates show up immediately; the cached copy is
+    // only used offline (pages fall back to index.html if this exact URL was never cached).
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -51,12 +53,12 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(() => caches.match(event.request).then((r) => r || caches.match("./index.html")))
+        .catch(() => caches.match(event.request).then((r) => r || (isPage ? caches.match("./index.html") : Response.error())))
     );
     return;
   }
 
-  // Cache-first for static assets (icons, manifest) that rarely change.
+  // Cache-first for static assets (icons, manifest, vendor library) that rarely change.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;

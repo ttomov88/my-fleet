@@ -120,7 +120,8 @@ async function daily(req: Request, body: any) {
   if (!cron_token || req.headers.get("x-cron-token") !== cron_token) return json({ error: "forbidden" }, 403);
   const force = body.force === true;
   const { date: today, hour } = localNow(TIME_ZONE);
-  // The scheduler fires at 05:00 and 06:00 UTC; only the one that is 08:00 in Sofia (summer or winter) sends.
+  // The scheduler fires at :00, :20 and :40 past 05 and 06 UTC; only the runs in Sofia's 08:00 hour
+  // (summer or winter) send. The later two are retries: anyone already reminded today is skipped.
   if (hour !== REMINDER_HOUR && !force) return json({ skipped: true, sofiaHour: hour });
 
   const [{ data: members, error: mErr }, { data: fleets, error: fErr }] = await Promise.all([
@@ -138,8 +139,10 @@ async function daily(req: Request, body: any) {
     const due = dueEvents(fleetData.get(m.fleet_id), today, lead);
     let result = null;
     if (due.length) result = await pushToUser(m.user_id, { ...reminderMessage(due), tag: "fleet-log-due" }, vapid);
-    await admin.from("fleet_members").update({ last_reminder_date: today }).eq("user_id", m.user_id);
-    report.push({ due: due.length, ...(result ?? {}) });
+    // Mark the day done unless every phone failed: then the 08:20 / 08:40 runs try again.
+    const delivered = !result || result.phones === 0 || result.sent > 0;
+    if (delivered) await admin.from("fleet_members").update({ last_reminder_date: today }).eq("user_id", m.user_id);
+    report.push({ due: due.length, retryLater: !delivered, ...(result ?? {}) });
   }
   return json({ today, people: report.length, report });
 }
