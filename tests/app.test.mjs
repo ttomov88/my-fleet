@@ -424,5 +424,32 @@ console.log("Passwords");
   $(P2, "resetForm").dispatchEvent(new P2.Event("submit", { cancelable: true })); await wait(50);
   ok($(P2, "resetMsg").textContent === "No account with this email" && $(P2, "resetResult").hidden, "unknown email refused");
 }
+
+console.log("Calendar");
+{
+  const K = phone({ vehicles: [veh("k1", "Голф")] }, { lang: "bg" });
+  await wait(20);
+  await login(K, "new@x.com", "longenough"); await wait(50);
+  K.eval(`state.activeVehicleId = "k1"; render(); openVehicleEditModal("k1")`);
+  const field = $(K, "vehicleRegDate").closest(".date-field");
+  field.querySelector(".date-text").click();
+  ok($(K, "calendarOverlay").classList.contains("open"), "tapping a date opens the app's calendar");
+  const wd = [...K.document.querySelectorAll("#calGrid .cal-wd")].map(e => e.textContent).join(" ");
+  ok(wd === "Пн Вт Ср Чт Пт Сб Нд", "week starts on Monday, Bulgarian day names");
+  ok(/^[А-Я][а-я]+ \d{4}$/.test($(K, "calTitle").textContent), "Bulgarian month name in the title", $(K, "calTitle").textContent);
+  $(K, "calTitle").click();
+  const y2019 = [...K.document.querySelectorAll("#calGrid .cal-year")].find(b => b.textContent === "2019") || (() => { $(K, "calPrev").click(); return [...K.document.querySelectorAll("#calGrid .cal-year")].find(b => b.textContent === "2019"); })();
+  y2019.click();
+  [...K.document.querySelectorAll("#calGrid .cal-day")].find(b => b.textContent === "7").click();
+  ok(!$(K, "calendarOverlay").classList.contains("open") && $(K, "vehicleRegDate").value.startsWith("2019-") && $(K, "vehicleRegDate").value.endsWith("-07"), "year jump and day pick set the date");
+  ok(/^07\.\d{2}\.2019$/.test(field.querySelector(".date-text").textContent), "field shows дд.мм.гггг", field.querySelector(".date-text").textContent);
+  field.querySelector(".date-text").click(); $(K, "calClear").click();
+  ok($(K, "vehicleRegDate").value === "" && field.querySelector(".date-text").textContent === "дд.мм.гггг", "Clear empties the date");
+  // Last done fills Next due one year later, via the calendar too
+  K.eval(`openItemModal("k1", "maintenance", null)`);
+  $(K, "itemLast").closest(".date-field").querySelector(".date-text").click();
+  $(K, "calToday").click();
+  ok($(K, "itemDue").value === K.eval("addMonthsISO(localISO(), 12)"), "Last done → Next due a year later");
+}
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

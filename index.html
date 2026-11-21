@@ -19,7 +19,7 @@
   } catch (e) {}
 </script>
 <link rel="preload" href="vendor/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
-<link rel="stylesheet" href="css/app.css?v=15" />
+<link rel="stylesheet" href="css/app.css?v=16" />
 </head>
 <body>
 <div id="app">
@@ -165,11 +165,11 @@
     <div class="field-row">
       <div class="field">
         <label for="itemLast" data-i18n="last_done">Last done</label>
-        <div class="date-field"><span class="date-text"></span><input id="itemLast" type="date" /></div>
+        <div class="date-field"><button type="button" class="date-text" aria-haspopup="dialog"></button><input id="itemLast" type="date" hidden /></div>
       </div>
       <div class="field">
         <label for="itemDue" data-i18n="next_due">Next due</label>
-        <div class="date-field"><span class="date-text"></span><input id="itemDue" type="date" /></div>
+        <div class="date-field"><button type="button" class="date-text" aria-haspopup="dialog"></button><input id="itemDue" type="date" hidden /></div>
       </div>
     </div>
     <div class="field">
@@ -212,7 +212,7 @@
     </div>
     <div class="field">
       <label for="vehicleRegDate" data-i18n="reg_date">Registration date</label>
-      <div class="date-field"><span class="date-text"></span><input id="vehicleRegDate" type="date" /></div>
+      <div class="date-field"><button type="button" class="date-text" aria-haspopup="dialog"></button><input id="vehicleRegDate" type="date" hidden /></div>
     </div>
     <div class="field">
       <label for="vehicleNote" data-i18n="note_optional">Note (optional)</label>
@@ -277,6 +277,22 @@
   </form>
 </div>
 
+<div class="overlay overlay-top" id="calendarOverlay" role="dialog" aria-modal="true">
+  <div class="modal cal-sheet">
+    <div class="cal-head">
+      <button type="button" class="round-btn" id="calPrev" aria-label="‹"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button type="button" class="cal-title" id="calTitle"></button>
+      <button type="button" class="round-btn" id="calNext" aria-label="›"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="calClear" data-i18n="clear">Clear</button>
+      <button type="button" class="btn btn-secondary" id="calToday" data-i18n="today">Today</button>
+      <button type="button" class="btn btn-primary" id="calCancel" data-i18n="cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay overlay-top" id="confirmOverlay" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
   <div class="modal confirm-sheet">
     <h3 id="confirmTitle"></h3>
@@ -314,7 +330,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="vendor/supabase.js"></script>
-<script src="js/i18n.js?v=15"></script>
-<script src="js/app.js?v=15"></script>
+<script src="js/i18n.js?v=16"></script>
+<script src="js/app.js?v=16"></script>
 </body>
 </html>

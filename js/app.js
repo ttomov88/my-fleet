@@ -118,8 +118,84 @@ function refreshDateFields() {
     text.classList.toggle("empty", !input.value);
   });
 }
-document.addEventListener("input", (e) => { if (e.target.closest && e.target.closest(".date-field")) refreshDateFields(); });
 document.addEventListener("change", (e) => { if (e.target.closest && e.target.closest(".date-field")) refreshDateFields(); });
+document.addEventListener("click", (e) => {
+  const b = e.target.closest && e.target.closest(".date-field .date-text");
+  if (b) openCalendar(b.parentElement.querySelector("input"));
+});
+
+/* ---------------- Calendar ----------------
+   The phone's own date picker follows the phone's settings (often US style), so dates are
+   picked here instead: weeks start on Monday, names in the app's language. Tap the month to
+   jump between years. The hidden <input type="date"> next to each field keeps the value. */
+const calOverlay = document.getElementById("calendarOverlay");
+const calGrid = document.getElementById("calGrid");
+const calTitle = document.getElementById("calTitle");
+let calInput = null, calMonth = null, calYears = false;
+function monthName(y, m) {
+  const s = new Date(y, m, 1).toLocaleDateString(locale(), { month: "long" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function openCalendar(input) {
+  calInput = input;
+  const base = input.value ? new Date(input.value + "T00:00:00") : new Date();
+  calMonth = new Date(base.getFullYear(), base.getMonth(), 1);
+  calYears = false;
+  drawCalendar();
+  calOverlay.classList.add("open");
+}
+function closeCalendar() { calOverlay.classList.remove("open"); calInput = null; }
+function setCalendarValue(iso) {
+  const input = calInput;
+  closeCalendar();
+  if (!input) return;
+  input.value = iso || "";
+  input.dispatchEvent(new Event("change", { bubbles: true }));   // e.g. Last done fills Next due
+}
+function drawCalendar() {
+  calGrid.innerHTML = "";
+  const y = calMonth.getFullYear(), m = calMonth.getMonth();
+  if (calYears) {
+    calGrid.className = "cal-grid years";
+    const start = y - 7;
+    calTitle.textContent = `${start} – ${start + 11}`;
+    for (let yr = start; yr < start + 12; yr++) {
+      const b = el("button", "cal-year" + (yr === y ? " sel" : ""), String(yr));
+      b.type = "button";
+      b.onclick = () => { calMonth = new Date(yr, m, 1); calYears = false; drawCalendar(); };
+      calGrid.appendChild(b);
+    }
+    return;
+  }
+  calGrid.className = "cal-grid";
+  calTitle.textContent = `${monthName(y, m)} ${y}`;
+  t("weekdays").split(" ").forEach((w, i) => calGrid.appendChild(el("div", "cal-wd" + (i >= 5 ? " we" : ""), w)));
+  const lead = (new Date(y, m, 1).getDay() + 6) % 7;          // Monday = 0
+  for (let i = 0; i < lead; i++) calGrid.appendChild(el("div", ""));
+  const today = localISO(), selected = calInput && calInput.value;
+  const days = new Date(y, m + 1, 0).getDate();
+  for (let d = 1; d <= days; d++) {
+    const iso = localISO(new Date(y, m, d));
+    const b = el("button", "cal-day" + (iso === today ? " today" : "") + (iso === selected ? " sel" : ""), String(d));
+    b.type = "button";
+    b.setAttribute("aria-label", numericDate(iso));
+    b.onclick = () => setCalendarValue(iso);
+    calGrid.appendChild(b);
+  }
+}
+document.getElementById("calPrev").onclick = () => {
+  calMonth = calYears ? new Date(calMonth.getFullYear() - 12, calMonth.getMonth(), 1) : new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1);
+  drawCalendar();
+};
+document.getElementById("calNext").onclick = () => {
+  calMonth = calYears ? new Date(calMonth.getFullYear() + 12, calMonth.getMonth(), 1) : new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1);
+  drawCalendar();
+};
+calTitle.onclick = () => { calYears = !calYears; drawCalendar(); };
+document.getElementById("calToday").onclick = () => setCalendarValue(localISO());
+document.getElementById("calClear").onclick = () => setCalendarValue("");
+document.getElementById("calCancel").onclick = () => closeCalendar();
+calOverlay.addEventListener("click", (e) => { if (e.target === calOverlay) closeCalendar(); });
 function formatDate(dateStr) {
   if (LANG === "bg") return numericDate(dateStr);
   return new Date(dateStr + "T00:00:00").toLocaleDateString(locale(), { day: "numeric", month: "short", year: "numeric" });
@@ -230,6 +306,7 @@ window.addEventListener("popstate", () => {
   if (suppressPops > 0) { suppressPops--; return; }
   if (navDepth > 0) navDepth--;
   if (confirmResolve) { finishConfirm(false); pushNav(); return; }   // back closes only the question
+  if (calOverlay.classList.contains("open")) { closeCalendar(); pushNav(); return; }   // …or only the calendar
   performTopLevelClose();
 });
 // Close everything and return to the home page in one step, keeping the back-gesture

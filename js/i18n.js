@@ -102,6 +102,7 @@ const I18N = {
     member_email: "Member's email", make_temp_pw: "Create",
     temp_pw_ready: p => `Temporary password for ${p.email}. Send it to them; they can change it in Settings.`,
     no_such_member: "No account with this email", not_admin: "Only the administrator can do this",
+    today: "Today", clear: "Clear", weekdays: "Mo Tu We Th Fr Sa Su",
     tab_home: "Home", tab_upcoming: "Upcoming", reg_date: "Registration date", date_ph: "dd/mm/yyyy",
     up_overdue: "Overdue", up_soon: p => `Next ${p.d} days`, up_later: "Later",
     up_empty: "No upcoming events. Add dates to your events to see them here."
@@ -208,6 +209,7 @@ const I18N = {
     member_email: "Имейл на члена", make_temp_pw: "Създай",
     temp_pw_ready: p => `Временна парола за ${p.email}. Изпратете му я – после може да я смени от Настройки.`,
     no_such_member: "Няма профил с този имейл", not_admin: "Само администраторът може да прави това",
+    today: "Днес", clear: "Изчисти", weekdays: "Пн Вт Ср Чт Пт Сб Нд",
     tab_home: "Начало", tab_upcoming: "Предстоящи", reg_date: "Дата на регистрация", date_ph: "дд.мм.гггг",
     up_overdue: "Просрочени", up_soon: p => `Следващите ${p.d} дни`, up_later: "По-късно",
     up_empty: "Няма предстоящи събития. Добавете срокове към събитията, за да ги виждате тук."
