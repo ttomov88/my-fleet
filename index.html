@@ -248,6 +248,20 @@
   }
   .settings-row + .settings-row { border-top: 1px solid var(--border); }
   .settings-row div.label-block .t { font-weight: 600; font-size: 14.5px; }
+  .settings-row div.label-block .s { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; word-break: break-all; }
+  .settings-row .label-block { min-width: 0; padding-right: 10px; }
+  #loginScreen {
+    position: fixed; inset: 0; z-index: 90; background: var(--navy);
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  #loginScreen[hidden] { display: none; }
+  .login-card { background: var(--paper); width: 100%; max-width: 400px; border-radius: 20px; padding: 22px 20px; }
+  .login-brand { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 700; margin-bottom: 18px; }
+  .login-brand .brand-icon { width: 34px; color: var(--navy); display: flex; }
+  .login-brand .brand-icon svg { width: 100%; height: auto; display: block; }
+  .login-msg { font-size: 13.5px; color: var(--red); min-height: 18px; }
+  .login-msg.ok { color: var(--ink-soft); }
+  .btn:disabled { opacity: 0.6; }
   .switch { position: relative; width: 44px; height: 26px; flex-shrink: 0; }
   .switch input { opacity: 0; width: 0; height: 0; }
   .slider { position: absolute; inset: 0; background: #D8D3C8; border-radius: 999px; cursor: pointer; transition: 0.2s; }
@@ -352,7 +366,15 @@
     <h3>Settings</h3>
     <div class="settings-row">
       <div class="label-block">
+        <div class="t">Account</div>
+        <div class="s" id="accountInfo"></div>
+      </div>
+      <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="logoutBtn">Log out</button>
+    </div>
+    <div class="settings-row">
+      <div class="label-block">
         <div class="t">Reminder notifications</div>
+        <div class="s">Every day at 08:00</div>
       </div>
       <label class="switch">
         <input type="checkbox" id="notifToggle" aria-label="Reminder notifications" />
@@ -371,12 +393,15 @@
     </div>
     <div class="settings-row">
       <div class="label-block">
-        <div class="t">Auto-backup</div>
+        <div class="t">Test notification</div>
       </div>
-      <label class="switch">
-        <input type="checkbox" id="autoBackupToggle" aria-label="Auto-backup" />
-        <span class="slider"></span>
-      </label>
+      <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="testNotifBtn">Send</button>
+    </div>
+    <div class="settings-row">
+      <div class="label-block">
+        <div class="t">Restore point</div>
+      </div>
+      <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="restoreBtn">Restore</button>
     </div>
     <div class="settings-row">
       <div class="label-block">
@@ -389,12 +414,6 @@
         <div class="t">Import backup</div>
       </div>
       <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="importBtn">Import</button>
-    </div>
-    <div class="settings-row">
-      <div class="label-block">
-        <div class="t">Restore point</div>
-      </div>
-      <button class="btn btn-secondary" style="flex:none; padding:9px 14px;" id="restoreBtn">Restore</button>
     </div>
     <input type="file" id="importFile" accept="application/json" style="display:none;" />
     <div class="modal-actions">
@@ -413,8 +432,28 @@
   </div>
 </div>
 
+<div id="loginScreen" hidden>
+  <form class="login-card" id="loginForm" novalidate>
+    <div class="login-brand"><span class="brand-icon" id="loginIcon"></span><span>My Fleet</span></div>
+    <div class="field">
+      <label for="loginEmail">Email</label>
+      <input id="loginEmail" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" />
+    </div>
+    <div class="field">
+      <label for="loginPassword">Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" minlength="8" />
+    </div>
+    <div class="login-msg" id="loginMsg" role="alert"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="registerBtn">Create account</button>
+      <button type="submit" class="btn btn-primary" id="loginBtn">Log in</button>
+    </div>
+  </form>
+</div>
+
 <div class="toast" id="toast"></div>
 
+<script src="vendor/supabase.js"></script>
 <script>
 /* ---------------- Data layer ---------------- */
 const STORAGE_KEY = "fleetlog_v1";
@@ -480,43 +519,20 @@ function loadData() {
   }
   return { vehicles: [] };
 }
-// Every saved change silently adds a restore point and, on the first save of the day, writes
-// one backup file to Downloads. Pass false for internal writes that aren't a user change.
-function saveData(backup = true) {
+// Saves on the phone first (works offline), then sends the change to the cloud account.
+// Pass false for internal tidy-ups that aren't a user change.
+function saveData(sync = true) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
   } catch (e) {
     showToast("Couldn't save. Phone storage may be full");
     return false;
   }
-  if (backup) { addRestorePoint(); scheduleDailyBackup(); }
+  if (sync) markDirty();
   return true;
 }
 
-/* ---------------- Restore points ----------------
-   A silent copy of the data after each saved change, kept inside the app (last 20). No file,
-   no prompt. They live in the same storage as the data, so clearing the app's data or
-   uninstalling removes them too; the daily backup file in Downloads covers that case. */
-const RESTORE_KEY = "fleetlog_restore_points";
-const RESTORE_MAX = 20;
-function loadRestorePoints() {
-  try {
-    const list = JSON.parse(localStorage.getItem(RESTORE_KEY) || "[]");
-    return Array.isArray(list) ? list.filter(p => p && typeof p.t === "number" && p.data) : [];
-  } catch (e) { return []; }
-}
-function addRestorePoint() {
-  const json = JSON.stringify(state.data);
-  let points = loadRestorePoints();
-  if (points[0] && JSON.stringify(points[0].data) === json) return;   // nothing changed since the last one
-  points.unshift({ t: Date.now(), data: JSON.parse(json) });
-  points = points.slice(0, RESTORE_MAX);
-  while (points.length) {                                             // storage tight: keep fewer, never fail the save
-    try { localStorage.setItem(RESTORE_KEY, JSON.stringify(points)); return; } catch (e) { points.pop(); }
-  }
-}
-
-const DEFAULT_SETTINGS = { notifications: false, leadDays: 30, lastCheck: null, autoBackup: true };
+const DEFAULT_SETTINGS = { notifications: false, leadDays: 30 };
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
@@ -670,6 +686,7 @@ function vehicleIconSvg(typeKey) {
 }
 
 document.getElementById("brandIcon").innerHTML = vehicleIconSvg("sedan");
+document.getElementById("loginIcon").innerHTML = vehicleIconSvg("sedan");
 document.getElementById("brandHomeBtn").onclick = () => {
   if (state.activeVehicleId) closeNav();
 };
@@ -1068,6 +1085,8 @@ function saveItemForm() {
   if (navClosing || !state.editing || !itemOverlay.classList.contains("open")) return;
   const { vehicleId, category, itemId } = state.editing;
   const vehicle = state.data.vehicles.find(v => v.id === vehicleId);
+  const target = vehicle && itemId ? vehicle.items[category].find(i => i.id === itemId) : null;
+  if (!vehicle || (itemId && !target)) { showToast("This was deleted on another phone"); goToRoot(); return; }
   if (!itemLabel.value.trim()) { showToast("Please enter a name"); return; }
   const fields = {
     label: itemLabel.value.trim(),
@@ -1076,12 +1095,11 @@ function saveItemForm() {
     done: formDone,
     notes: itemNotes.value.trim()
   };
-  if (itemId) Object.assign(vehicle.items[category].find(i => i.id === itemId), fields);
+  if (itemId) Object.assign(target, fields);
   else vehicle.items[category].push({ id: uid(), ...fields });
   saveData();
   closeItemModal();
   render();
-  checkDueReminders(true);
 }
 document.getElementById("itemSave").onclick = () => saveItemForm();
 document.getElementById("itemDelete").onclick = () => {
@@ -1188,6 +1206,7 @@ document.getElementById("vehicleSave").onclick = () => {
   if (!name) { showToast("Please enter a vehicle name"); return; }
   if (editingVehicleId) {
     const v = state.data.vehicles.find(x => x.id === editingVehicleId);
+    if (!v) { showToast("This vehicle was deleted on another phone"); goToRoot(); return; }
     v.name = name;
     v.type = selectedVehicleType;
     v.registration = registration;
@@ -1222,44 +1241,385 @@ document.getElementById("vehicleDelete").onclick = () => {
   showToast("Vehicle deleted");
 };
 
+/* ---------------- Cloud account & sync ----------------
+   The data lives in your account and a copy stays on the phone, so the app works offline.
+   Every change is saved on the phone first and sent to the account as soon as there is
+   internet. If another phone (a family member) changed the data in the meantime, both sets of
+   changes are combined by vehicle and event, and the newest edit of the same field wins. */
+const SUPABASE_URL = "https://lsyihonmzxpjnmiueqgp.supabase.co";
+const SUPABASE_KEY = "sb_publishable_VOsIQ53p2Lulq6-Ov4m7sg_5KywhXPr";
+const AUTH_KEY = "fleetlog_auth";
+const SYNC_KEY = "fleetlog_sync_v1";
+const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { storageKey: AUTH_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+}) : null;
+
+// sync = { userId, email, version, base, dirty }. base: the account's data as of the last sync,
+// needed to tell which side changed what when combining.
+function loadSync() {
+  try { const v = JSON.parse(localStorage.getItem(SYNC_KEY) || "null"); if (v && typeof v === "object") return v; } catch (e) {}
+  return {};
+}
+let sync = loadSync();
+function saveSync() { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch (e) {} }
+
+// Compares data regardless of key order (the database stores keys in its own order).
+function canon(v) {
+  if (Array.isArray(v)) return "[" + v.map(canon).join(",") + "]";
+  if (v && typeof v === "object") return "{" + Object.keys(v).filter(k => v[k] !== undefined).sort().map(k => JSON.stringify(k) + ":" + canon(v[k])).join(",") + "}";
+  return JSON.stringify(v === undefined ? null : v);
+}
+const same = (a, b) => canon(a) === canon(b);
+
+// Three-way merge: base = last common version, l = this phone, r = the account.
+function mergeFields(b, l, r, skip) {
+  const out = {};
+  new Set([...Object.keys(b || {}), ...Object.keys(l || {}), ...Object.keys(r || {})]).forEach(k => {
+    if (skip && skip.includes(k)) return;
+    const v = same(l ? l[k] : undefined, b ? b[k] : undefined) ? (r ? r[k] : undefined) : (l ? l[k] : undefined);
+    if (v !== undefined) out[k] = v;
+  });
+  return out;
+}
+function mergeList(b, l, r, mergeOne) {
+  b = b || []; l = l || []; r = r || [];
+  const B = new Map(b.map(x => [x.id, x])), L = new Map(l.map(x => [x.id, x])), R = new Map(r.map(x => [x.id, x]));
+  const ids = a => a.map(x => x.id);
+  const order = same(ids(l), ids(b)) ? ids(r) : ids(l);       // a reorder on this phone wins, otherwise the account's order
+  const out = [], seen = new Set();
+  [...order, ...ids(l), ...ids(r)].forEach(id => {
+    if (seen.has(id)) return;
+    seen.add(id);
+    const bx = B.get(id), lx = L.get(id), rx = R.get(id);
+    if (lx && rx) out.push(bx ? mergeOne(bx, lx, rx) : lx);
+    else if (lx) { if (!bx || !same(lx, bx)) out.push(lx); }  // new here, or edited here after being deleted elsewhere
+    else if (rx) { if (!bx || !same(rx, bx)) out.push(rx); }
+  });
+  return out;
+}
+function mergeVehicle(b, l, r) {
+  const v = mergeFields(b, l, r, ["items"]);
+  v.items = {};
+  CATEGORIES.forEach(c => { v.items[c.key] = mergeList((b.items || {})[c.key], (l.items || {})[c.key], (r.items || {})[c.key], mergeFields); });
+  return v;
+}
+function mergeData(b, l, r) {
+  return normalizeData({ vehicles: mergeList((b || {}).vehicles, (l || {}).vehicles, (r || {}).vehicles, mergeVehicle) }) || normalizeData(r) || { vehicles: [] };
+}
+
+let syncTimer = null, syncBusy = null, syncFailed = false;
+function markDirty() {
+  if (!sync.userId) return;
+  sync.dirty = true;
+  saveSync();
+  updateAccountInfo();
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncNow, 600);
+}
+function syncNow() {
+  if (!syncBusy) {
+    syncBusy = doSync().catch(() => { syncFailed = true; }).finally(() => {
+      syncBusy = null;
+      updateAccountInfo();
+      if (sync.dirty && !syncFailed) syncTimer = setTimeout(syncNow, 300);   // changed while sending
+    });
+  }
+  return syncBusy;
+}
+function applyAccountData(data, row, clean) {
+  if (!same(state.data, data)) {
+    state.data = data;
+    saveData(false);
+    render();
+  }
+  sync.version = row.version;
+  sync.base = row.data;
+  if (clean) sync.dirty = false;
+  saveSync();
+}
+async function doSync() {
+  if (!sb || !sync.userId) return;
+  syncFailed = false;
+  for (let round = 0; round < 5; round++) {
+    if (sync.dirty) {
+      const sent = JSON.parse(JSON.stringify(state.data));
+      const { data, error } = await sb.rpc("save_fleet", { new_data: sent, base_version: sync.version || 0 });
+      const row = Array.isArray(data) ? data[0] : data;
+      if (error || !row) { syncFailed = true; return; }
+      if (row.ok) {
+        sync.version = row.version;
+        sync.base = sent;
+        if (same(state.data, sent)) sync.dirty = false;            // otherwise: edited meanwhile, send again
+        saveSync();
+        if (!sync.dirty) return;
+      } else {
+        // Another phone saved first: combine, then send the combined data.
+        applyAccountData(mergeData(sync.base, state.data, row.data), row, false);
+      }
+    } else {
+      const { data, error } = await sb.from("fleets").select("data, version").maybeSingle();
+      if (error || !data) { syncFailed = true; return; }
+      if (!sync.dirty && data.version !== sync.version) applyAccountData(normalizeData(data.data) || { vehicles: [] }, data, true);
+      return;
+    }
+  }
+}
+
+// First login on this phone. Data already on the phone (from before accounts existed) is
+// uploaded if the account is empty; data from a different account is never mixed in.
+async function firstSync(user) {
+  const { data: row, error } = await sb.from("fleets").select("data, version").maybeSingle();
+  if (error || !row) return false;
+  const remote = normalizeData(row.data) || { vehicles: [] };
+  const local = sync.userId && sync.userId !== user.id ? { vehicles: [] } : state.data;
+  let result = remote, upload = false;
+  if (local.vehicles.length && !same(local, remote)) {
+    if (!remote.vehicles.length) { result = local; upload = true; }
+    else {
+      const known = new Set(remote.vehicles.map(v => v.id));
+      const extra = local.vehicles.filter(v => !known.has(v.id));
+      if (extra.length && confirm(`This phone has ${extra.length} vehicle${extra.length === 1 ? "" : "s"} that ${extra.length === 1 ? "isn't" : "aren't"} in the account. Add ${extra.length === 1 ? "it" : "them"} to the account?`)) {
+        result = { vehicles: [...remote.vehicles, ...extra] };
+        upload = true;
+      }
+    }
+  }
+  state.data = result;
+  saveData(false);
+  sync = { userId: user.id, email: user.email, version: row.version, base: row.data, dirty: upload };
+  saveSync();
+  try { localStorage.removeItem("fleetlog_restore_points"); } catch (e) {}   // replaced by restore points in the account
+  render();
+  if (upload) syncNow();
+  return true;
+}
+
+function updateAccountInfo() {
+  const el = document.getElementById("accountInfo");
+  if (!el) return;
+  const status = !sync.userId ? "" : sync.dirty ? (syncFailed || !navigator.onLine ? "Changes wait for internet" : "Saving…") : "All changes saved";
+  el.textContent = sync.email ? `${sync.email} · ${status}` : "Not logged in";
+}
+
+// The server ("api" function): account creation, notification key, test notification.
+async function api(action, body, token) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/api`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${token || SUPABASE_KEY}` },
+    body: JSON.stringify({ action, ...(body || {}) })
+  });
+  let out = {};
+  try { out = await res.json(); } catch (e) {}
+  if (!res.ok && !out.error) out.error = "server_error";
+  return out;
+}
+async function accessToken() {
+  try { const { data } = await sb.auth.getSession(); return data.session ? data.session.access_token : null; } catch (e) { return null; }
+}
+
+/* ---------------- Login screen ---------------- */
+const loginScreen = document.getElementById("loginScreen");
+const loginMsg = document.getElementById("loginMsg");
+const loginEmail = document.getElementById("loginEmail");
+const loginPassword = document.getElementById("loginPassword");
+function showLogin(msg) {
+  loginScreen.hidden = false;
+  sayLogin(msg || "");
+}
+function sayLogin(text, ok) {
+  loginMsg.textContent = text;
+  loginMsg.className = ok ? "login-msg ok" : "login-msg";
+}
+const REGISTER_ERRORS = {
+  invalid_email: () => "That email doesn't look right",
+  weak_password: () => "The password needs at least 8 characters",
+  not_allowed: () => "This email isn't on the invite list",
+  join_first: r => `${r.join} needs to create an account first`,
+  already_registered: () => "This email already has an account. Log in instead"
+};
+let loginBusy = false;
+async function doLogin(register) {
+  if (loginBusy) return;
+  if (!sb) { sayLogin("The app didn't load fully. Check the internet and reopen it"); return; }
+  const email = loginEmail.value.trim().toLowerCase();
+  const password = loginPassword.value;
+  if (!email || !password) { sayLogin("Enter your email and password"); return; }
+  loginBusy = true;
+  document.querySelectorAll("#loginForm button").forEach(b => b.disabled = true);
+  sayLogin(register ? "Creating account…" : "Logging in…", true);
+  try {
+    if (register) {
+      const r = await api("register", { email, password });
+      if (r.error) { sayLogin((REGISTER_ERRORS[r.error] || (() => "Something went wrong. Try again later"))(r)); return; }
+    }
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error || !data.session) {
+      sayLogin(error && /invalid/i.test(error.message) ? "Wrong email or password" : "Couldn't log in. Check the internet and try again");
+      return;
+    }
+    sayLogin("Loading your data…", true);
+    if (sync.userId === data.user.id) { sync.email = data.user.email; saveSync(); syncNow(); }
+    else if (!(await firstSync(data.user))) { sayLogin("Couldn't load your data. Check the internet and try again"); return; }
+    loginScreen.hidden = true;
+    loginPassword.value = "";
+    showToast(register ? "Account created" : "Logged in");
+    afterLogin();
+  } catch (e) {
+    sayLogin("Couldn't reach the server. Check the internet and try again");
+  } finally {
+    loginBusy = false;
+    document.querySelectorAll("#loginForm button").forEach(b => b.disabled = false);
+  }
+}
+document.getElementById("loginForm").onsubmit = (e) => { e.preventDefault(); doLogin(false); };
+document.getElementById("registerBtn").onclick = () => doLogin(true);
+
+function afterLogin() {
+  updateAccountInfo();
+  loadMemberSettings();
+  if (state.settings.notifications) subscribePush(false).catch(() => {});   // keep this phone's subscription fresh
+}
+
+// "Remind me" is stored with the account, so the server uses it for the 08:00 reminder.
+async function loadMemberSettings() {
+  try {
+    const { data } = await sb.from("fleet_members").select("settings").maybeSingle();
+    if (!data) return;
+    const lead = Number(data.settings && data.settings.leadDays);
+    if ([7, 14, 30].includes(lead)) { state.settings.leadDays = lead; saveSettings(); }
+    else saveMemberSettings();
+  } catch (e) {}
+}
+async function saveMemberSettings() {
+  if (!sb || !sync.userId) return;
+  try { await sb.from("fleet_members").update({ settings: { leadDays: state.settings.leadDays } }).eq("user_id", sync.userId); } catch (e) {}
+}
+
+let loggingOut = false;
+document.getElementById("logoutBtn").onclick = async () => {
+  const msg = sync.dirty
+    ? "Some changes haven't reached the account yet and will be lost. Log out anyway?"
+    : "Log out? Your data stays in the account.";
+  if (!confirm(msg)) return;
+  loggingOut = true;
+  try { await withTimeout(unsubscribePush(), 6000); } catch (e) {}
+  try { await sb.auth.signOut({ scope: "local" }); } catch (e) {}
+  try { localStorage.removeItem(AUTH_KEY); } catch (e) {}
+  sync = {};
+  saveSync();
+  state.data = { vehicles: [] };
+  saveData(false);
+  state.settings = { ...DEFAULT_SETTINGS };
+  saveSettings();
+  loggingOut = false;
+  goToRoot();
+  showLogin();
+};
+
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))]);
+}
+
+/* ---------------- Notifications ----------------
+   The server sends the reminder every day at 08:00 (Sofia time), even when the app is closed.
+   This phone only has to sign up once; the sign-up is stored with the account. */
+function b64uToBytes(s) {
+  s = s.replace(/-/g, "+").replace(/_/g, "/");
+  s += "=".repeat((4 - (s.length % 4)) % 4);
+  const bin = atob(s), out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function bytesToB64u(b) {
+  let s = "";
+  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+const pushSupported = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+
+async function subscribePush(ask) {
+  if (!pushSupported()) throw new Error("unsupported");
+  if (Notification.permission !== "granted") {
+    if (!ask) return false;
+    if (await Notification.requestPermission() !== "granted") throw new Error("denied");
+  }
+  const reg = await withTimeout(navigator.serviceWorker.ready, 10000);
+  const { publicKey } = await api("publicKey");
+  if (!publicKey) throw new Error("server");
+  let sub = await reg.pushManager.getSubscription();
+  const key = sub && sub.options && sub.options.applicationServerKey;
+  if (sub && key && bytesToB64u(new Uint8Array(key)) !== publicKey) { await sub.unsubscribe(); sub = null; }
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(publicKey) });
+  const j = sub.toJSON();
+  const { error } = await sb.from("push_subscriptions").upsert({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth }, { onConflict: "endpoint" });
+  if (error) throw new Error("server");
+  return true;
+}
+async function unsubscribePush() {
+  if (!pushSupported()) return;
+  const reg = await navigator.serviceWorker.getRegistration();
+  const sub = reg && await reg.pushManager.getSubscription();
+  if (!sub) return;
+  if (sb && sync.userId) await sb.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+  await sub.unsubscribe();
+}
+
 /* ---------------- Settings modal ---------------- */
 const settingsOverlay = document.getElementById("settingsOverlay");
+const notifToggle = document.getElementById("notifToggle");
 document.getElementById("settingsBtn").onclick = () => {
-  document.getElementById("notifToggle").checked = !!state.settings.notifications;
+  notifToggle.checked = !!state.settings.notifications;
   document.getElementById("leadDays").value = state.settings.leadDays || 30;
-  document.getElementById("autoBackupToggle").checked = state.settings.autoBackup !== false;
+  updateAccountInfo();
   settingsOverlay.classList.add("open");
   pushNav();
 };
 document.getElementById("settingsClose").onclick = () => closeNav();
 
-document.getElementById("autoBackupToggle").onchange = (e) => {
-  state.settings.autoBackup = e.target.checked;
-  saveSettings();
-};
-
-document.getElementById("notifToggle").onchange = async (e) => {
-  if (e.target.checked) {
-    if (!("Notification" in window)) {
-      showToast("Notifications aren't supported in this browser");
-      e.target.checked = false; return;
+notifToggle.onchange = async () => {
+  const on = notifToggle.checked;
+  notifToggle.disabled = true;
+  try {
+    if (on) {
+      await subscribePush(true);
+      showToast("Reminders on: every day at 08:00");
+    } else {
+      await unsubscribePush();
     }
-    const perm = await Notification.requestPermission();
-    if (perm !== "granted") {
-      showToast("Notification permission was not granted");
-      e.target.checked = false; return;
-    }
-    state.settings.notifications = true;
-  } else {
-    state.settings.notifications = false;
+    state.settings.notifications = on;
+    saveSettings();
+  } catch (err) {
+    notifToggle.checked = !on;
+    const m = err && err.message;
+    showToast(m === "unsupported" ? "Notifications aren't supported here. On iPhone, add the app to the Home Screen first"
+      : m === "denied" ? "Notifications are blocked for this app in the phone's settings"
+      : "Couldn't change notifications. Check the internet");
+  } finally {
+    notifToggle.disabled = false;
   }
-  saveSettings();
-  if (state.settings.notifications) checkDueReminders(true);   // show what's due right away
 };
 document.getElementById("leadDays").onchange = (e) => {
   state.settings.leadDays = parseInt(e.target.value, 10);
   saveSettings();
-  checkDueReminders(true);
+  saveMemberSettings();
+};
+document.getElementById("testNotifBtn").onclick = async (e) => {
+  const btn = e.currentTarget;
+  if (!state.settings.notifications) { showToast("Turn on reminder notifications first"); return; }
+  btn.disabled = true;
+  try {
+    const token = await accessToken();
+    if (!token) { showToast("Connect to the internet and try again"); return; }
+    const r = await api("test", {}, token);
+    if (r.error) showToast("Couldn't send. Try again later");
+    else if (!r.phones) showToast("This phone isn't signed up. Turn notifications off and on again");
+    else if (r.sent) showToast(`Sent to ${r.sent} phone${r.sent === 1 ? "" : "s"}. Check your notifications`);
+    else showToast("Couldn't deliver. Turn notifications off and on again");
+  } catch (err) {
+    showToast("Connect to the internet and try again");
+  } finally {
+    btn.disabled = false;
+  }
 };
 
 /* ---------------- Export / Import ---------------- */
@@ -1280,26 +1640,13 @@ function backupFileName() {
   const d = new Date();
   return `My Fleet ${localISO(d)} ${String(d.getHours()).padStart(2, "0")}-${String(d.getMinutes()).padStart(2, "0")}.json`;
 }
-function performBackupExport(silent) {
+function performBackupExport() {
   const payload = JSON.stringify({ vehicles: state.data.vehicles });
   downloadFile(new Blob([payload], { type: "application/json" }), backupFileName());
-  if (!silent) showToast("Backup exported");
+  showToast("Backup exported");
 }
 
-// Auto-backup: the first saved change of each day writes one file to Downloads, silently.
-// (Every change is still kept as a restore point inside the app.)
-let autoBackupTimer = null;
-function scheduleDailyBackup() {
-  if (state.settings.autoBackup === false) return;
-  const today = localISO();
-  if (state.settings.lastAutoBackupDay === today) return;
-  state.settings.lastAutoBackupDay = today;
-  saveSettings();
-  clearTimeout(autoBackupTimer);
-  autoBackupTimer = setTimeout(() => { try { performBackupExport(true); } catch (e) {} }, 250);
-}
-
-document.getElementById("exportBtn").onclick = () => performBackupExport(false);
+document.getElementById("exportBtn").onclick = () => performBackupExport();
 document.getElementById("importBtn").onclick = () => document.getElementById("importFile").click();
 document.getElementById("importFile").onchange = (e) => {
   const file = e.target.files[0];
@@ -1313,8 +1660,7 @@ document.getElementById("importFile").onchange = (e) => {
     const n = data.vehicles.length;
     if (!confirm(`Replace everything in the app with this backup (${n} vehicle${n === 1 ? "" : "s"})?`)) return;
     state.data = data;
-    if (!saveData(false)) return;
-    addRestorePoint();
+    if (!saveData()) return;
     goToRoot();
     showToast("Backup imported");
   };
@@ -1322,7 +1668,8 @@ document.getElementById("importFile").onchange = (e) => {
   reader.readAsText(file);
 };
 
-/* ---------------- Restore list ---------------- */
+/* ---------------- Restore list ----------------
+   The account keeps the last 30 versions of the data (one per saved change), off the phone. */
 const restoreOverlay = document.getElementById("restoreOverlay");
 function restoreLabel(t) {
   const d = new Date(t);
@@ -1337,26 +1684,35 @@ function restoreSummary(data) {
   const ev = vs.reduce((n, v) => n + CATEGORIES.reduce((m, c) => m + ((v.items && v.items[c.key]) || []).length, 0), 0);
   return `${vs.length} vehicle${vs.length === 1 ? "" : "s"} · ${ev} event${ev === 1 ? "" : "s"}`;
 }
-document.getElementById("restoreBtn").onclick = () => {
-  const points = loadRestorePoints();
+let restoreLoading = false;
+document.getElementById("restoreBtn").onclick = async () => {
+  if (restoreLoading || !sb || !sync.userId) return;
+  restoreLoading = true;
+  let points = null;
+  try {
+    const { data, error } = await sb.from("fleet_history").select("created_at, data").order("created_at", { ascending: false }).limit(30);
+    if (!error) points = data;
+  } catch (e) {}
+  restoreLoading = false;
+  if (!points) { showToast("Restore points need internet"); return; }
   if (!points.length) { showToast("No restore points yet"); return; }
-  const current = JSON.stringify(state.data);
+  if (!settingsOverlay.classList.contains("open")) return;   // closed while loading
   const list = document.getElementById("restoreList");
   list.innerHTML = "";
   points.forEach(p => {
-    const isNow = JSON.stringify(p.data) === current;
+    const data = normalizeData(p.data);
+    const t = Date.parse(p.created_at);
+    const isNow = !!data && same(data, state.data);
     const btn = document.createElement("button");
     btn.className = "restore-item";
-    btn.disabled = isNow;
-    btn.innerHTML = `<span class="when">${restoreLabel(p.t)}${isNow ? " · now" : ""}</span><span class="what">${restoreSummary(p.data)}</span>`;
+    btn.disabled = isNow || !data;
+    btn.innerHTML = `<span class="when">${restoreLabel(t)}${isNow ? " · now" : ""}</span><span class="what">${restoreSummary(data)}</span>`;
     btn.onclick = () => {
-      const data = normalizeData(p.data);
-      if (!data) { showToast("That restore point can't be read"); return; }
-      if (!confirm(`Go back to ${restoreLabel(p.t)}? Changes made after it will be replaced.`)) return;
+      if (!confirm(`Go back to ${restoreLabel(t)}? Changes made after it will be replaced.`)) return;
       state.data = data;
-      if (!saveData()) return;          // the restored state becomes the newest restore point
+      if (!saveData()) return;          // the restored data becomes the newest version in the account
       goToRoot();
-      showToast(`Restored to ${restoreLabel(p.t)}`);
+      showToast(`Restored to ${restoreLabel(t)}`);
     };
     list.appendChild(btn);
   });
@@ -1365,54 +1721,6 @@ document.getElementById("restoreBtn").onclick = () => {
 };
 document.getElementById("restoreClose").onclick = () => closeNav();
 
-/* ---------------- Reminders / local notifications ---------------- */
-function checkDueReminders(force) {
-  if (!state.settings.notifications) return;
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
-  const todayKey = localISO();
-  if (!force && state.settings.lastCheck === todayKey) return;
-  state.settings.lastCheck = todayKey;
-  saveSettings();
-
-  const lead = state.settings.leadDays || 30;
-  const due = [];
-  state.data.vehicles.forEach(v => {
-    CATEGORIES.forEach(cat => {
-      (v.items[cat.key] || []).forEach(item => {
-        if (isDone(item)) return;
-        const days = daysUntil(item.dueDate);
-        if (days !== null && days <= lead) {
-          due.push({ v, cat, item, days });
-        }
-      });
-    });
-  });
-  if (due.length === 0) {
-    // Nothing qualifies under the current settings — clear any stale notification
-    // still sitting in the tray from before (e.g. the lead time was just lowered).
-    if (navigator.serviceWorker) {
-      navigator.serviceWorker.ready.then(reg => {
-        reg.getNotifications({ tag: "fleet-log-due" }).then(notifs => notifs.forEach(n => n.close()));
-      }).catch(() => {});
-    }
-    return;
-  }
-
-  const body = due.slice(0,3).map(d => `${d.v.name}: ${d.item.label} (${d.days < 0 ? "overdue" : d.days + "d left"})`).join("\n")
-    + (due.length > 3 ? `\n+${due.length - 3} more` : "");
-
-  const title = due.some(d => d.days < 0) ? "My Fleet: overdue events" : "My Fleet: events due soon";
-  const options = { body, icon: "icons/icon-192.png", badge: "icons/badge-96.png", tag: "fleet-log-due" };
-
-  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage({ type: "SHOW_NOTIFICATION", title, options });
-  } else if (navigator.serviceWorker) {
-    navigator.serviceWorker.ready.then(reg => reg.showNotification(title, options));
-  } else {
-    try { new Notification(title, options); } catch (e) {}
-  }
-}
-
 /* ---------------- Service worker registration ---------------- */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -1420,13 +1728,34 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-// Re-check reminders whenever the app becomes visible (covers "opened the app" case
-// since Android may not reliably wake background web pages for scheduled checks).
+// Bring in changes from other phones whenever the app comes back to the front or gets internet.
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
   if (lastRenderDay !== localISO()) render();   // day changed while the app sat in the background
-  checkDueReminders(false);
+  syncNow();
 });
+window.addEventListener("online", () => syncNow());
+setInterval(() => { if (document.visibilityState === "visible" && sync.dirty) syncNow(); }, 60000);
+
+async function startAccount() {
+  if (!sb) { if (!sync.userId) showLogin("The app didn't load fully. Check the internet and reopen it"); return; }
+  sb.auth.onAuthStateChange((event, session) => {
+    setTimeout(() => {   // never call the account library from inside its own callback
+      if (event === "SIGNED_OUT" && sync.userId && !loggingOut) showLogin("Please log in again");
+      if (event === "TOKEN_REFRESHED" && session && session.user.id === sync.userId && sync.dirty) syncNow();
+    }, 0);
+  });
+  let session = null;
+  try { session = (await sb.auth.getSession()).data.session; } catch (e) {}
+  let savedLogin = false;
+  try { savedLogin = !!localStorage.getItem(AUTH_KEY); } catch (e) {}
+  if (session && session.user.id === sync.userId) { syncNow(); afterLogin(); }
+  else if (session) {
+    if (await firstSync(session.user)) afterLogin();
+    else showLogin("Couldn't load your data. Check the internet and log in");
+  }
+  else if (!(savedLogin && sync.userId)) showLogin();   // a saved login without internet keeps working offline
+}
 
 /* ---------------- Init ---------------- */
 render();
@@ -1442,7 +1771,7 @@ try {
     req.onsuccess = () => { try { localStorage.setItem(FILES_REMOVED_KEY, "1"); } catch (e) {} };
   }
 } catch (e) {}
-setTimeout(() => checkDueReminders(false), 1200);
+startAccount();
 // Ask the browser to keep this app's data even when the phone is low on space. Installed apps
 // are usually granted this silently; it doesn't protect against clearing data / uninstalling.
 if (navigator.storage && navigator.storage.persist) {

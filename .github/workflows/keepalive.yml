@@ -1,0 +1,40 @@
+# Keeps the free Supabase project awake (it pauses after 7 days without use) and keeps this
+# scheduled workflow itself alive (GitHub turns schedules off after 60 days without commits).
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: "17 3 * * *"   # every day, 03:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the database
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+              "https://lsyihonmzxpjnmiueqgp.supabase.co/rest/v1/rpc/keepalive" \
+              -H "apikey: sb_publishable_VOsIQ53p2Lulq6-Ov4m7sg_5KywhXPr" \
+              -H "Content-Type: application/json" -d "{}")
+            echo "Attempt $i: HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 30
+          done
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - name: Monthly commit so GitHub keeps the schedule on
+        run: |
+          if [ "$(date -u +%d)" != "01" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then exit 0; fi
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/keepalive.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/keepalive.txt
+          git commit -m "Keep-alive $(date -u +%Y-%m-%d)" || exit 0
+          git push

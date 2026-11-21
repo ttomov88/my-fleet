@@ -1,7 +1,7 @@
-// Bump CACHE_NAME whenever icons or manifest.json change: those are served cache-first.
-const CACHE_NAME = "fleet-log-v4";
+// Bump CACHE_NAME whenever icons, manifest.json or vendor/ change: those are served cache-first.
+const CACHE_NAME = "fleet-log-v5";
 // The app itself: these must download for a new version to install.
-const CORE = ["./", "./index.html", "./manifest.json"];
+const CORE = ["./", "./index.html", "./manifest.json", "./vendor/supabase.js"];
 // Nice to have offline. A missing or misplaced icon must never block an app update.
 const OPTIONAL = [
   "./icons/icon-192.png",
@@ -35,6 +35,8 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;   // let the browser handle anything that isn't a plain read
+  // Only the app's own files. Account data (Supabase) must always come fresh from the network.
+  if (new URL(event.request.url).origin !== self.location.origin) return;
   const isPage = event.request.mode === "navigate" || event.request.destination === "document";
 
   if (isPage) {
@@ -69,13 +71,18 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
-// The page asks the service worker to show reminder notifications (required on Android).
-self.addEventListener("message", (event) => {
-  if (event.data && event.data.type === "SHOW_NOTIFICATION") {
-    const { title, options } = event.data;
-    // waitUntil keeps the worker alive until the notification is actually shown.
-    event.waitUntil(self.registration.showNotification(title, options));
-  }
+// The daily 08:00 reminder (and the test notification) sent by the server.
+self.addEventListener("push", (event) => {
+  let msg = {};
+  try { msg = event.data ? event.data.json() : {}; } catch (e) { msg = { body: event.data ? event.data.text() : "" }; }
+  const tag = msg.tag || "fleet-log";
+  event.waitUntil(self.registration.showNotification(msg.title || "My Fleet", {
+    body: msg.body || "",
+    icon: "icons/icon-192.png",
+    badge: "icons/badge-96.png",
+    tag,
+    renotify: true   // a new reminder with the same tag still makes a sound
+  }));
 });
 
 // Tapping a reminder opens the app (or brings it to the front if it's already open).
