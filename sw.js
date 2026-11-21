@@ -1,6 +1,6 @@
 // Bump CACHE_NAME whenever icons, manifest.json or vendor/ change: those are served cache-first.
 // The app's own code (index.html, css/, js/) is network-first, so updates show up right away.
-const CACHE_NAME = "fleet-log-v11";
+const CACHE_NAME = "fleet-log-v13";
 // The app itself: these must download for a new version to install.
 const CORE = ["./", "./index.html", "./css/app.css", "./js/i18n.js", "./js/app.js", "./manifest.json", "./vendor/supabase.js"];
 // Nice to have offline. A missing or misplaced icon must never block an app update.

@@ -39,7 +39,7 @@ function normalizeData(raw) {
       }));
     });
     const { photo, ...rest } = v;   // vehicle photos were removed too
-    return { ...rest, id: freshId(v.id), name: str(v.name) || t("unnamed_vehicle"),
+    return { ...rest, id: freshId(v.id), name: str(v.name) || t("unnamed_vehicle"), regDate: date(v.regDate),
       registration: str(v.registration), vin: str(v.vin), note: str(v.note), items };
   });
   return { vehicles };
@@ -85,6 +85,7 @@ function loadSettings() {
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings)); } catch (e) {} }
 
 const state = {
+  tab: "home",          // bottom menu: home | upcoming | settings
   data: loadData(),
   settings: loadSettings(),
   activeVehicleId: null,
@@ -104,7 +105,23 @@ function addMonthsISO(dateStr, months) {
   t.setDate(Math.min(d, new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate()));
   return localISO(t);
 }
+// Dates as numbers: 05.12.2026 in Bulgarian, 05/12/2026 in English.
+function numericDate(dateStr) {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-");
+  return LANG === "bg" ? `${d}.${m}.${y}` : `${d}/${m}/${y}`;
+}
+function refreshDateFields() {
+  document.querySelectorAll(".date-field").forEach(f => {
+    const input = f.querySelector("input"), text = f.querySelector(".date-text");
+    text.textContent = input.value ? numericDate(input.value) : t("date_ph");
+    text.classList.toggle("empty", !input.value);
+  });
+}
+document.addEventListener("input", (e) => { if (e.target.closest && e.target.closest(".date-field")) refreshDateFields(); });
+document.addEventListener("change", (e) => { if (e.target.closest && e.target.closest(".date-field")) refreshDateFields(); });
 function formatDate(dateStr) {
+  if (LANG === "bg") return numericDate(dateStr);
   return new Date(dateStr + "T00:00:00").toLocaleDateString(locale(), { day: "numeric", month: "short", year: "numeric" });
 }
 // A completed event (Done + Save): grayed out, never overdue, no reminders.
@@ -221,6 +238,7 @@ function goToRoot() {
   document.querySelectorAll(".overlay.open").forEach(o => o.classList.remove("open"));   // every panel, incl. any added later
   state.editing = null;
   state.activeVehicleId = null;
+  state.tab = "home";
   render();
   const steps = navDepth - 1;            // entries above the root sentinel
   if (steps > 0) {
@@ -237,9 +255,8 @@ function performTopLevelClose() {
   if (vehicleOverlay.classList.contains("open")) { vehicleOverlay.classList.remove("open"); return; }
   if (categoryPickerOverlay.classList.contains("open")) { categoryPickerOverlay.classList.remove("open"); return; }
   if (restoreOverlay.classList.contains("open")) { restoreOverlay.classList.remove("open"); return; }
-  if (attentionOverlay.classList.contains("open")) { attentionOverlay.classList.remove("open"); return; }
-  if (settingsOverlay.classList.contains("open")) { settingsOverlay.classList.remove("open"); return; }
   if (state.activeVehicleId) { state.activeVehicleId = null; render(); return; }
+  if (state.tab !== "home") { state.tab = "home"; render(); window.scrollTo(0, 0); return; }   // back from a tab goes Home
   // On the home page with nothing open: this press just used up the root sentinel, so the
   // phone is now on the app's first history entry and the NEXT back press closes the app.
   // If that second press doesn't come within 2 seconds, put the sentinel back.
@@ -411,7 +428,7 @@ function renderHero(view) {
       ${soon ? `<span class="hero-pill"><i class="p-amber"></i>${t("pill_soon", { n: soon })}</span>` : ""}
       <span class="hero-pill">${t("pill_vehicles", { n })}</span>
     </div>`;
-  if (due.length) hero.onclick = () => openAttention();
+  if (due.length) hero.onclick = () => switchTab("upcoming");
   else hero.tabIndex = -1;
   view.appendChild(hero);
 }
@@ -470,9 +487,10 @@ function renderVehiclePage(view, vehicle) {
   actions.append(addAct, editAct);
   view.appendChild(actions);
 
-  if (vehicle.vin || vehicle.note) {
+  if (vehicle.vin || vehicle.regDate || vehicle.note) {
     const details = el("div", "group details");
     if (vehicle.vin) details.appendChild(el("div", "row", `<div class="row-text"><div class="row-title">${t("vin")}</div><div class="row-sub mono">${escapeHtml(vehicle.vin)}</div></div>`));
+    if (vehicle.regDate) details.appendChild(el("div", "row", `<div class="row-text"><div class="row-title">${t("reg_date")}</div><div class="row-sub mono">${numericDate(vehicle.regDate)}</div></div>`));
     if (vehicle.note) details.appendChild(el("div", "row", `<div class="row-text"><div class="row-title">${t("note")}</div><div class="row-sub">${escapeHtml(vehicle.note)}</div></div>`));
     view.appendChild(details);
   }
@@ -534,48 +552,99 @@ const backBtn = document.getElementById("backBtn");
 backBtn.onclick = () => { if (state.activeVehicleId) closeNav(); };
 function updateAppbar() {
   const vehicle = state.data.vehicles.find(v => v.id === state.activeVehicleId);
-  document.getElementById("settingsBtn").hidden = !!vehicle;
   backBtn.hidden = !vehicle;
-  document.getElementById("appbarTitle").textContent = vehicle ? vehicle.name : "My Fleet";   // the app's name is the same in both languages
+  document.getElementById("appbarTitle").textContent = vehicle ? vehicle.name
+    : state.tab === "upcoming" ? t("tab_upcoming") : state.tab === "settings" ? t("settings") : "My Fleet";   // the app's name is the same in both languages
 }
 window.addEventListener("scroll", () => appbarEl.classList.toggle("scrolled", window.scrollY > 48), { passive: true });
 
 let lastRenderDay = null;
 function render() {
   lastRenderDay = localISO();
-  renderVehicle();
+  const onVehicle = !!state.data.vehicles.find(v => v.id === state.activeVehicleId);
+  const onSettings = !onVehicle && state.tab === "settings";
+  mainEl.hidden = onSettings;
+  document.getElementById("settingsPage").hidden = !onSettings;
+  if (onSettings) refreshSettingsPage();
+  else if (!onVehicle && state.tab === "upcoming") renderUpcoming();
+  else renderVehicle();
   updateAppbar();
+  updateTabbar(onVehicle);
 }
 
-/* ---------------- Needs attention ---------------- */
-const attentionOverlay = document.getElementById("attentionOverlay");
-function openAttention() {
-  const list = document.getElementById("attentionList");
-  list.innerHTML = "";
-  attentionItems().forEach(({ v, c, it }) => {
-    const val = dueValue(it);
-    const row = el("button", "row row-btn wrap", `
-      <div class="avatar ${val.cls === "v-red" ? "a-red" : "a-amber"}">${vehicleIconSvg(vehicleTypeOf(v))}</div>
-      <div class="row-text">
-        <div class="row-title">${escapeHtml(it.label)}</div>
-        <div class="row-sub">${escapeHtml(v.name)} · ${c.label}</div>
-      </div>
-      <div class="row-right"><div class="row-value ${val.cls}">${val.text}</div>${val.meta ? `<div class="row-meta">${val.meta}</div>` : ""}</div>`);
-    row.onclick = () => {
-      if (navClosing || !attentionOverlay.classList.contains("open")) return;
-      attentionOverlay.classList.remove("open");
-      state.activeVehicleId = v.id;          // the attention entry becomes the vehicle page entry
-      render();
-      window.scrollTo(0, 0);
-      replaceNav();
-      openItemModal(v.id, c.key, it.id);
-    };
-    list.appendChild(row);
-  });
-  attentionOverlay.classList.add("open");
-  pushNav();
+/* ---------------- Bottom menu: Home / Upcoming / Settings ----------------
+   Home is the bottom of the back-gesture history. Opening another tab adds one step, moving
+   between the other tabs replaces it, so the phone's back gesture always returns Home. */
+const TABS = ["home", "upcoming", "settings"];
+function switchTab(tab) {
+  if (!TABS.includes(tab) || navClosing) return;
+  if (tab === state.tab) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+  if (tab === "home") { closeNav(); return; }            // the back step itself switches to Home
+  if (state.tab === "home") pushNav(); else replaceNav();
+  state.tab = tab;
+  render();
+  window.scrollTo(0, 0);
 }
-document.getElementById("attentionClose").onclick = () => closeNav();
+document.querySelectorAll("#tabbar .tab").forEach(b => { b.onclick = () => switchTab(b.dataset.tab); });
+function updateTabbar(onVehicle) {
+  document.getElementById("tabbar").hidden = onVehicle;   // a vehicle page is a step inside a tab
+  document.querySelectorAll("#tabbar .tab").forEach(b => {
+    if (b.dataset.tab === state.tab) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
+  const overdue = attentionItems().filter(d => d.days < 0).length;
+  const badge = document.getElementById("upcomingBadge");
+  badge.hidden = !overdue;
+  badge.textContent = overdue > 9 ? "9+" : String(overdue);
+}
+
+/* ---------------- Upcoming: every open event across all vehicles, by date ---------------- */
+function openEventFromList(v, c, it) {
+  if (navClosing) return;
+  pushNav();                       // step 1: the vehicle page
+  state.activeVehicleId = v.id;
+  render();
+  window.scrollTo(0, 0);
+  openItemModal(v.id, c.key, it.id);   // step 2: the event
+}
+function renderUpcoming() {
+  mainEl.innerHTML = "";
+  const view = el("div", "view");
+  view.appendChild(el("h1", "page-title", t("tab_upcoming")));
+  const lead = soonDays(), all = [];
+  state.data.vehicles.forEach(v => CATEGORIES.forEach(c => (v.items[c.key] || []).forEach(it => {
+    if (isDone(it)) return;
+    const days = daysUntil(it.dueDate);
+    if (days !== null) all.push({ v, c, it, days });
+  })));
+  all.sort((a, b) => a.days - b.days);
+  const groups = [
+    { title: t("up_overdue"), list: all.filter(d => d.days < 0) },
+    { title: t("up_soon", { d: lead }), list: all.filter(d => d.days >= 0 && d.days <= lead) },
+    { title: t("up_later"), list: all.filter(d => d.days > lead) }
+  ];
+  if (!all.length) view.appendChild(el("div", "upcoming-empty", t("up_empty")));
+  groups.forEach(g => {
+    if (!g.list.length) return;
+    view.appendChild(el("div", "upcoming-title", g.title));
+    const group = el("div", "group");
+    g.list.forEach(({ v, c, it }) => {
+      const val = dueValue(it);
+      const tone = val.cls === "v-red" ? "a-red" : val.cls === "v-amber" ? "a-amber" : "a-blue";
+      const row = el("button", "row row-btn wrap", `
+        <div class="avatar ${tone}">${vehicleIconSvg(vehicleTypeOf(v))}</div>
+        <div class="row-text">
+          <div class="row-title">${escapeHtml(it.label)}</div>
+          <div class="row-sub">${escapeHtml(v.name)} · ${c.label}</div>
+          <div class="row-sub">${formatDate(it.dueDate)}</div>
+        </div>
+        <div class="row-right"><div class="row-value ${val.cls}">${val.text}</div>${val.meta ? `<div class="row-meta">${val.meta}</div>` : ""}</div>`);
+      row.onclick = () => openEventFromList(v, c, it);
+      group.appendChild(row);
+    });
+    view.appendChild(group);
+  });
+  mainEl.appendChild(view);
+}
 
 /* ---------------- Confirm sheet (replaces the browser's confirm box) ---------------- */
 const confirmOverlay = document.getElementById("confirmOverlay");
@@ -605,7 +674,7 @@ confirmOverlay.addEventListener("click", (e) => { if (e.target === confirmOverla
 
 // Tapping the dimmed area above a sheet closes it, like Cancel. Not for the event and vehicle
 // forms: a stray tap there would throw away what was typed.
-document.querySelectorAll("#attentionOverlay, #categoryPickerOverlay, #settingsOverlay, #restoreOverlay").forEach(o => {
+document.querySelectorAll("#categoryPickerOverlay, #restoreOverlay").forEach(o => {
   o.addEventListener("click", (e) => { if (e.target === o && o.classList.contains("open")) closeNav(); });
 });
 
@@ -640,6 +709,7 @@ itemRenewBtn.onclick = () => {
   const start = itemDue.value || localISO();
   itemLast.value = start;
   itemDue.value = addMonthsISO(start, REPEAT_YEARLY);
+  refreshDateFields();
 };
 function openItemModal(vehicleId, category, itemId, replace) {
   state.editing = { vehicleId, category, itemId };
@@ -653,6 +723,7 @@ function openItemModal(vehicleId, category, itemId, replace) {
   itemNotes.value = item ? item.notes || "" : "";
   itemDeleteRow.style.display = item ? "flex" : "none";
   syncItemForm();
+  refreshDateFields();
   itemOverlay.classList.add("open");
   if (replace) replaceNav(); else pushNav();
 }
@@ -747,7 +818,9 @@ function openVehicleModal() {
   document.getElementById("vehicleName").value = "";
   document.getElementById("vehicleReg").value = "";
   document.getElementById("vehicleVin").value = "";
+  document.getElementById("vehicleRegDate").value = "";
   document.getElementById("vehicleNote").value = "";
+  refreshDateFields();
   renderTypePicker();
   vehicleOverlay.classList.add("open");
   pushNav();
@@ -763,7 +836,9 @@ function openVehicleEditModal(vehicleId) {
   document.getElementById("vehicleName").value = v.name;
   document.getElementById("vehicleReg").value = v.registration || "";
   document.getElementById("vehicleVin").value = v.vin || "";
+  document.getElementById("vehicleRegDate").value = v.regDate || "";
   document.getElementById("vehicleNote").value = v.note || "";
+  refreshDateFields();
   renderTypePicker();
   vehicleOverlay.classList.add("open");
   pushNav();
@@ -774,6 +849,7 @@ document.getElementById("vehicleSave").onclick = () => {
   const name = document.getElementById("vehicleName").value.trim();
   const registration = document.getElementById("vehicleReg").value.trim();
   const vin = document.getElementById("vehicleVin").value.trim().toUpperCase();
+  const regDate = document.getElementById("vehicleRegDate").value || null;
   const note = document.getElementById("vehicleNote").value.trim();
   if (!name) { showToast(t("enter_vehicle_name")); return; }
   if (editingVehicleId) {
@@ -783,6 +859,7 @@ document.getElementById("vehicleSave").onclick = () => {
     v.type = selectedVehicleType;
     v.registration = registration;
     v.vin = vin;
+    v.regDate = regDate;
     v.note = note;
     saveData();
     render();
@@ -790,7 +867,7 @@ document.getElementById("vehicleSave").onclick = () => {
     closeNav();
   } else {
     const wasAtRoot = !state.activeVehicleId;
-    const v = { id: uid(), name, type: selectedVehicleType, registration, vin, note, items: { maintenance: [], insurance: [], inspection: [] } };
+    const v = { id: uid(), name, type: selectedVehicleType, registration, vin, regDate, note, items: { maintenance: [], insurance: [], inspection: [] } };
     state.data.vehicles.push(v);
     state.activeVehicleId = v.id;
     saveData();
@@ -976,7 +1053,6 @@ function updateAccountInfo() {
   const initial = sync.email ? sync.email.trim()[0].toUpperCase() : "·";
   document.getElementById("accountInfo").textContent = status;
   document.getElementById("accountEmail").textContent = sync.email || "";
-  document.getElementById("avatarInitial").textContent = initial;
   document.getElementById("profileInitial").textContent = initial;
   document.getElementById("syncDot").hidden = !waiting;   // small amber dot in the corner while changes wait
 }
@@ -1161,17 +1237,13 @@ async function unsubscribePush() {
   await sub.unsubscribe();
 }
 
-/* ---------------- Settings modal ---------------- */
-const settingsOverlay = document.getElementById("settingsOverlay");
+/* ---------------- Settings page ---------------- */
 const notifToggle = document.getElementById("notifToggle");
-document.getElementById("settingsBtn").onclick = () => {
+function refreshSettingsPage() {
   notifToggle.checked = !!state.settings.notifications;
   document.getElementById("leadDays").value = state.settings.leadDays || 30;
   updateAccountInfo();
-  settingsOverlay.classList.add("open");
-  pushNav();
-};
-document.getElementById("settingsClose").onclick = () => closeNav();
+}
 
 /* ---------------- Theme: Auto (follows the phone) / Light / Dark ---------------- */
 const darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
@@ -1200,6 +1272,7 @@ function setLanguage(lang) {
 }
 function applyLanguage() {
   applyStaticText();
+  refreshDateFields();
   document.querySelectorAll("#langSeg button").forEach(b => b.setAttribute("aria-checked", b.dataset.lang === LANG ? "true" : "false"));
   document.getElementById("loginLang").textContent = LANG === "bg" ? "EN" : "БГ";
   if (itemOverlay.classList.contains("open")) syncItemForm();
@@ -1328,7 +1401,7 @@ document.getElementById("restoreBtn").onclick = async () => {
   restoreLoading = false;
   if (!points) { showToast(t("restore_need_net")); return; }
   if (!points.length) { showToast(t("no_restore")); return; }
-  if (!settingsOverlay.classList.contains("open")) return;   // closed while loading
+  if (state.tab !== "settings" || state.activeVehicleId) return;   // left Settings while loading
   const list = document.getElementById("restoreList");
   list.innerHTML = "";
   points.forEach(p => {

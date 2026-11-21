@@ -93,11 +93,14 @@ const I18N = {
     appearance: "Appearance", theme: "Theme", theme_auto: "Auto", theme_light: "Light", theme_dark: "Dark",
     language: "Language", data_group: "Data", restore_point: "Restore point", restore_sub: "Go back to an earlier version",
     export_backup: "Export backup", import_backup: "Import backup", done: "Done",
-    vehicle_type: "Vehicle type", reminder_notifications: "Reminder notifications"
+    vehicle_type: "Vehicle type", reminder_notifications: "Reminder notifications",
+    tab_home: "Home", tab_upcoming: "Upcoming", reg_date: "Registration date", date_ph: "dd/mm/yyyy",
+    up_overdue: "Overdue", up_soon: p => `Next ${p.d} days`, up_later: "Later",
+    up_empty: "No upcoming events. Add dates to your events to see them here."
   },
   bg: {
     cat_maintenance: "Обслужване", cat_insurance: "Застраховка", cat_inspection: "Технически преглед",
-    type_scooter: "Скутер", type_motorbike: "Мотор", type_atv: "ATV", type_sedan: "Седан", type_suv: "Джип",
+    type_scooter: "Скутер", type_motorbike: "Мотор", type_atv: "ATV", type_sedan: "Седан", type_suv: "СУВ",
     unnamed_vehicle: "Превозно средство", untitled: "Без име",
     save_failed: "Не успях да запазя. Паметта на телефона може да е пълна",
     press_back_exit: "Натиснете „Назад“ още веднъж за изход",
@@ -188,7 +191,10 @@ const I18N = {
     appearance: "Изглед", theme: "Тема", theme_auto: "Авто", theme_light: "Светла", theme_dark: "Тъмна",
     language: "Език", data_group: "Данни", restore_point: "Точка за възстановяване", restore_sub: "Върнете се към по-ранна версия",
     export_backup: "Изтегли резервно копие", import_backup: "Зареди резервно копие", done: "Готово",
-    vehicle_type: "Вид превозно средство", reminder_notifications: "Известия за напомняне"
+    vehicle_type: "Вид превозно средство", reminder_notifications: "Известия за напомняне",
+    tab_home: "Начало", tab_upcoming: "Предстоящи", reg_date: "Дата на регистрация", date_ph: "дд.мм.гггг",
+    up_overdue: "Просрочени", up_soon: p => `Следващите ${p.d} дни`, up_later: "По-късно",
+    up_empty: "Няма предстоящи събития. Добавете срокове към събитията, за да ги виждате тук."
   }
 };
 

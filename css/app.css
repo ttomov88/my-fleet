@@ -134,7 +134,39 @@ svg { display: block; }
 .sync-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 4px var(--amber-soft); }
 .sync-dot[hidden] { display: none; }
 
-main { flex: 1; padding: 4px 16px 48px; max-width: 640px; margin: 0 auto; width: 100%; }
+main, .page { flex: 1; padding: 4px 16px calc(96px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; width: 100%; }
+main[hidden], .page[hidden] { display: none; }
+.page { animation: viewIn 0.22s ease-out; }
+.page .group { margin-bottom: 22px; }
+
+/* ---------- Bottom menu ---------- */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  display: flex; justify-content: space-around; align-items: stretch;
+  padding: 6px 8px max(8px, env(safe-area-inset-bottom));
+  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(18px); backdrop-filter: saturate(180%) blur(18px);
+  border-top: 1px solid var(--line);
+}
+.tabbar[hidden] { display: none; }
+.tab {
+  flex: 1; max-width: 140px; border: none; background: none; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0 2px;
+  color: var(--text-3); font-size: 11.5px; font-weight: 600;
+}
+.tab svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.tab[aria-current="page"] { color: var(--accent); }
+.tab:active { opacity: 0.7; }
+.tab-icon { position: relative; display: flex; }
+.tab-badge {
+  position: absolute; top: -5px; right: -10px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  background: var(--red); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--bg);
+}
+.tab-badge[hidden] { display: none; }
+.upcoming-title { font-size: 13px; font-weight: 600; color: var(--text-2); margin: 0 6px 8px; }
+.upcoming-empty { text-align: center; color: var(--text-2); padding: 48px 24px; font-size: 15px; }
 .view { animation: viewIn 0.22s ease-out; }
 @keyframes viewIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
@@ -314,6 +346,16 @@ main { flex: 1; padding: 4px 16px 48px; max-width: 640px; margin: 0 auto; width:
 .field input[type="date"] { padding-right: 8px; }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
 .field textarea { resize: vertical; min-height: 64px; }
+/* Date fields show dd.mm.yyyy whatever the phone's language; the real date picker sits on top, invisible. */
+.date-field { position: relative; }
+.date-field .date-text {
+  display: flex; align-items: center; min-height: 52px; padding: 14px; border-radius: var(--radius-sm);
+  background: var(--surface); border: 2px solid transparent; font-size: 16px; color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.date-field .date-text.empty { color: var(--text-3); }
+.date-field:focus-within .date-text { border-color: var(--accent); }
+.field .date-field input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; min-height: 0; padding: 0; border: none; cursor: pointer; }
 
 .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
 .modal-actions-stack { flex-direction: column; }
@@ -359,7 +401,7 @@ main { flex: 1; padding: 4px 16px 48px; max-width: 640px; margin: 0 auto; width:
 .profile-text { min-width: 0; }
 .profile-email { font-size: 18px; font-weight: 700; word-break: break-all; }
 .profile-status { font-size: 13px; color: var(--text-2); margin-top: 3px; }
-#settingsOverlay .row + .row::before { left: 16px; }
+#settingsPage .row + .row::before { left: 16px; }
 .row-select {
   border: none; background: var(--surface-2); color: var(--text); font: inherit; font-size: 14px; font-weight: 600;
   padding: 8px 12px; border-radius: 999px; outline: none;
@@ -408,7 +450,7 @@ input:disabled + .slider { opacity: 0.6; }
 
 /* ---------- Toast ---------- */
 .toast {
-  position: fixed; bottom: max(24px, env(safe-area-inset-bottom)); left: 50%; transform: translate(-50%, 12px);
+  position: fixed; bottom: calc(84px + env(safe-area-inset-bottom)); left: 50%; transform: translate(-50%, 12px);
   background: var(--text); color: var(--bg); padding: 12px 18px; border-radius: 999px;
   font-size: 14px; font-weight: 500; z-index: 100; opacity: 0; pointer-events: none;
   transition: opacity 0.22s, transform 0.22s; max-width: calc(100% - 32px); text-align: center;

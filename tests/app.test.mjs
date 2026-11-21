@@ -270,7 +270,7 @@ console.log("Review fixes");
   $(P, "leadDays").value = "14"; $(P, "leadDays").dispatchEvent(new P.Event("change")); await wait(20);
   ok(P.document.querySelector(".row-value").classList.contains("v-green"), "same event turns green with Remind me = 14");
   // event deleted on another phone while open here
-  P.eval(`document.getElementById("settingsClose").click()`); await wait(20);
+  P.eval(`state.tab = "home"; state.activeVehicleId = state.data.vehicles[0].id; render()`); await wait(20);
   P.eval(`openItemModal(state.activeVehicleId, "maintenance", "s1"); state.data.vehicles[0].items.maintenance = [];`);
   let crashed = false;
   try { $(P, "itemDelete").click(); } catch (e) { crashed = true; }
@@ -293,8 +293,8 @@ console.log("Redesign");
   await wait(50);
   ok($(D, "main").querySelector(".hero-big").textContent === "1 overdue", "summary card counts overdue events");
   D.document.querySelector(".hero").click(); await wait(20);
-  const rows = D.document.querySelectorAll("#attentionList .row");
-  ok(rows.length === 1 && rows[0].textContent.includes("Casco"), "tapping it lists what needs attention");
+  const rows = D.document.querySelectorAll("#main .row");
+  ok(rows.length === 1 && rows[0].textContent.includes("Casco") && D.eval("state.tab") === "upcoming", "tapping it opens Upcoming with what needs attention");
   rows[0].click(); await wait(20);
   ok($(D, "itemOverlay").classList.contains("open") && $(D, "itemLabel").value === "Casco" && !$(D, "backBtn").hidden, "a row opens that event on its vehicle page");
   D.eval(`document.getElementById("settingsBtn").click()`);
@@ -302,7 +302,7 @@ console.log("Redesign");
   ok(D.document.documentElement.dataset.theme === "dark" && JSON.parse(D.localStorage.getItem("fleetlog_settings_v1")).theme === "dark", "dark theme applied and remembered");
   D.document.querySelector('#themeSeg [data-theme="auto"]').click();
   ok(!D.document.documentElement.dataset.theme, "auto follows the phone");
-  ok($(D, "avatarInitial").textContent === "N", "avatar shows the account initial");
+  ok($(D, "profileInitial").textContent === "N", "profile shows the account initial");
 }
 
 console.log("Bulgarian");
@@ -346,6 +346,43 @@ console.log("Second review");
   $(S, "itemLabel").value = "Typed but not saved";
   $(S, "itemOverlay").dispatchEvent(new S.MouseEvent("click", { bubbles: true }));
   ok($(S, "itemOverlay").classList.contains("open") && $(S, "itemLabel").value === "Typed but not saved", "a stray tap outside the event form keeps what was typed");
+}
+
+console.log("Bottom menu");
+{
+  const M = phone({ vehicles: [veh("m1", "Golf", { insurance: [ev("z1", "Casco", "2020-01-01")], maintenance: [ev("z2", "Oil", "2099-01-01")] })] });
+  await wait(20);
+  await login(M, "new@x.com", "longenough"); await wait(50);
+  ok(!$(M, "tabbar").hidden && $(M, "tabHome").getAttribute("aria-current") === "page", "menu shows, Home selected");
+  const overdueNow = M.eval("attentionItems().filter(d => d.days < 0).length");
+  ok(overdueNow >= 1 && $(M, "upcomingBadge").textContent === String(overdueNow) && !$(M, "upcomingBadge").hidden, "Upcoming shows the overdue count");
+  $(M, "tabUpcoming").click(); await wait(20);
+  const titles = [...M.document.querySelectorAll("#main .upcoming-title")].map(e => e.textContent);
+  ok(titles[0] === "Overdue" && titles.includes("Later"), "Upcoming groups events by date");
+  $(M, "settingsBtn").click(); await wait(20);
+  ok(!$(M, "settingsPage").hidden && $(M, "main").hidden, "Settings is its own page");
+  M.history.back(); await wait(50);
+  ok(M.eval("state.tab") === "home" && !$(M, "main").hidden, "back gesture from a tab returns Home");
+  $(M, "tabUpcoming").click(); await wait(20);
+  M.document.querySelector("#main .row").click(); await wait(20);
+  ok($(M, "tabbar").hidden && $(M, "itemOverlay").classList.contains("open"), "tapping an event opens it on its vehicle page, menu hidden");
+  M.history.back(); await wait(50); M.history.back(); await wait(50);
+  ok(M.eval("state.tab") === "upcoming" && !$(M, "tabbar").hidden, "back twice returns to Upcoming");
+}
+
+console.log("Registration date and Bulgarian dates");
+{
+  const R2 = phone({ vehicles: [veh("r1", "Голф", { maintenance: [ev("q1", "Масло", "2027-03-05")] })] }, { lang: "bg" });
+  await wait(20);
+  await login(R2, "ttomov88@gmail.com", "secret123"); await wait(50);
+  R2.eval(`state.activeVehicleId = "r1"; render(); openVehicleEditModal(state.activeVehicleId)`);
+  const rd = $(R2, "vehicleRegDate"); rd.value = "2019-04-07"; rd.dispatchEvent(new R2.Event("change", { bubbles: true }));
+  ok(rd.closest(".date-field").querySelector(".date-text").textContent === "07.04.2019", "date field shows дд.мм.гггг");
+  $(R2, "vehicleSave").click(); await wait(50);
+  ok(R2.eval(`state.data.vehicles.find(v => v.id === "r1").regDate`) === "2019-04-07", "registration date saved");
+  const main = $(R2, "main").textContent;
+  ok(main.includes("Дата на регистрация") && main.includes("07.04.2019"), "shown on the vehicle page");
+  ok(main.includes("Срок 05.03.2027"), "event dates shown as дд.мм.гггг", main.match(/Срок [^ ]+/)?.[0]);
 }
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

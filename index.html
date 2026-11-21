@@ -25,7 +25,6 @@
 <div id="app">
   <header class="appbar">
     <div class="appbar-left">
-      <button class="round-btn avatar-btn" id="settingsBtn" data-i18n-aria="settings" aria-label="Settings"><span id="avatarInitial">·</span></button>
       <button class="round-btn" id="backBtn" data-i18n-aria="back" aria-label="Back" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
@@ -37,103 +36,9 @@
   </header>
 
   <main id="main"></main>
-</div>
 
-<div class="overlay" id="attentionOverlay">
-  <div class="modal">
-    <div class="sheet-grab"></div>
-    <h3 data-i18n="needs_attention">Needs attention</h3>
-    <div class="group" id="attentionList"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" id="attentionClose" data-i18n="close">Close</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="categoryPickerOverlay">
-  <div class="modal">
-    <div class="sheet-grab"></div>
-    <h3 data-i18n="add_event_title">Add event</h3>
-    <div class="group" id="categoryPickList"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" id="categoryPickCancel" data-i18n="cancel">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="itemOverlay">
-  <div class="modal">
-    <div class="sheet-grab"></div>
-    <h3 id="itemModalTitle">Add event</h3>
-    <div class="field">
-      <label for="itemLabel" data-i18n="name">Name</label>
-      <input id="itemLabel" autocomplete="off" />
-    </div>
-    <div class="field-row">
-      <div class="field">
-        <label for="itemLast" data-i18n="last_done">Last done</label>
-        <input id="itemLast" type="date" />
-      </div>
-      <div class="field">
-        <label for="itemDue" data-i18n="next_due">Next due</label>
-        <input id="itemDue" type="date" />
-      </div>
-    </div>
-    <div class="field">
-      <label for="itemNotes" data-i18n="notes">Notes</label>
-      <input id="itemNotes" autocomplete="off" />
-    </div>
-    <div class="chip-row" id="itemStateRow" style="display:none;">
-      <button class="chip chip-done" id="itemDoneBtn" aria-pressed="false">Done</button>
-      <button class="chip" id="itemRenewBtn" data-i18n="renew">&#8635; Renew for a year</button>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" id="itemCancel" data-i18n="cancel">Cancel</button>
-      <button class="btn btn-primary" id="itemSave" data-i18n="save">Save</button>
-    </div>
-    <div class="modal-actions" id="itemDeleteRow" style="display:none;">
-      <button class="btn btn-text-danger" id="itemDelete" data-i18n="delete_event">Delete event</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="vehicleOverlay">
-  <div class="modal">
-    <div class="sheet-grab"></div>
-    <h3 id="vehicleModalTitle">Add vehicle</h3>
-    <div class="field">
-      <label data-i18n="type">Type</label>
-      <div class="type-grid" id="vehicleTypeGrid" role="group" data-i18n-aria="vehicle_type" aria-label="Vehicle type"></div>
-    </div>
-    <div class="field">
-      <label for="vehicleName" data-i18n="name">Name</label>
-      <input id="vehicleName" autocomplete="off" />
-    </div>
-    <div class="field">
-      <label for="vehicleReg" data-i18n="registration">Registration</label>
-      <input id="vehicleReg" autocomplete="off" />
-    </div>
-    <div class="field">
-      <label for="vehicleVin" data-i18n="vin">VIN</label>
-      <input id="vehicleVin" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20" style="text-transform:uppercase; letter-spacing:0.3px;" />
-    </div>
-    <div class="field">
-      <label for="vehicleNote" data-i18n="note_optional">Note (optional)</label>
-      <textarea id="vehicleNote" rows="2"></textarea>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" id="vehicleCancel" data-i18n="cancel">Cancel</button>
-      <button class="btn btn-primary" id="vehicleSave" data-i18n="save">Save</button>
-    </div>
-    <div class="modal-actions" id="vehicleDeleteRow" style="display:none;">
-      <button class="btn btn-text-danger" id="vehicleDelete" data-i18n="delete_vehicle">Delete vehicle</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="settingsOverlay">
-  <div class="modal">
-    <div class="sheet-grab"></div>
+  <section id="settingsPage" class="page" hidden>
+    <h1 class="page-title" data-i18n="settings">Settings</h1>
     <div class="profile">
       <div class="profile-avatar" id="profileInitial">·</div>
       <div class="profile-text">
@@ -206,8 +111,108 @@
       </button>
     </div>
     <input type="file" id="importFile" accept="application/json" style="display:none;" />
+  </section>
+
+  <nav class="tabbar" id="tabbar" aria-label="Menu">
+    <button class="tab" id="tabHome" data-tab="home">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5L12 3.5l8.5 7V20a1 1 0 0 1-1 1h-5v-6h-5v6h-5a1 1 0 0 1-1-1z"/></svg>
+      <span data-i18n="tab_home">Home</span>
+    </button>
+    <button class="tab" id="tabUpcoming" data-tab="upcoming">
+      <span class="tab-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+        <span class="tab-badge" id="upcomingBadge" hidden></span>
+      </span>
+      <span data-i18n="tab_upcoming">Upcoming</span>
+    </button>
+    <button class="tab" id="settingsBtn" data-tab="settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5A7.6 7.6 0 0 0 7 6.5l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 3l-2 1.6 2 3.4 2.4-1a7.6 7.6 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 2.6-1.5l2.4 1 2-3.4z"/></svg>
+      <span data-i18n="settings">Settings</span>
+    </button>
+  </nav>
+</div>
+
+<div class="overlay" id="categoryPickerOverlay">
+  <div class="modal">
+    <div class="sheet-grab"></div>
+    <h3 data-i18n="add_event_title">Add event</h3>
+    <div class="group" id="categoryPickList"></div>
     <div class="modal-actions">
-      <button class="btn btn-primary" id="settingsClose" data-i18n="done">Done</button>
+      <button class="btn btn-secondary" id="categoryPickCancel" data-i18n="cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="itemOverlay">
+  <div class="modal">
+    <div class="sheet-grab"></div>
+    <h3 id="itemModalTitle">Add event</h3>
+    <div class="field">
+      <label for="itemLabel" data-i18n="name">Name</label>
+      <input id="itemLabel" autocomplete="off" />
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="itemLast" data-i18n="last_done">Last done</label>
+        <div class="date-field"><span class="date-text"></span><input id="itemLast" type="date" /></div>
+      </div>
+      <div class="field">
+        <label for="itemDue" data-i18n="next_due">Next due</label>
+        <div class="date-field"><span class="date-text"></span><input id="itemDue" type="date" /></div>
+      </div>
+    </div>
+    <div class="field">
+      <label for="itemNotes" data-i18n="notes">Notes</label>
+      <input id="itemNotes" autocomplete="off" />
+    </div>
+    <div class="chip-row" id="itemStateRow" style="display:none;">
+      <button class="chip chip-done" id="itemDoneBtn" aria-pressed="false">Done</button>
+      <button class="chip" id="itemRenewBtn" data-i18n="renew">&#8635; Renew for a year</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="itemCancel" data-i18n="cancel">Cancel</button>
+      <button class="btn btn-primary" id="itemSave" data-i18n="save">Save</button>
+    </div>
+    <div class="modal-actions" id="itemDeleteRow" style="display:none;">
+      <button class="btn btn-text-danger" id="itemDelete" data-i18n="delete_event">Delete event</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="vehicleOverlay">
+  <div class="modal">
+    <div class="sheet-grab"></div>
+    <h3 id="vehicleModalTitle">Add vehicle</h3>
+    <div class="field">
+      <label data-i18n="type">Type</label>
+      <div class="type-grid" id="vehicleTypeGrid" role="group" data-i18n-aria="vehicle_type" aria-label="Vehicle type"></div>
+    </div>
+    <div class="field">
+      <label for="vehicleName" data-i18n="name">Name</label>
+      <input id="vehicleName" autocomplete="off" />
+    </div>
+    <div class="field">
+      <label for="vehicleReg" data-i18n="registration">Registration</label>
+      <input id="vehicleReg" autocomplete="off" />
+    </div>
+    <div class="field">
+      <label for="vehicleVin" data-i18n="vin">VIN</label>
+      <input id="vehicleVin" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20" style="text-transform:uppercase; letter-spacing:0.3px;" />
+    </div>
+    <div class="field">
+      <label for="vehicleRegDate" data-i18n="reg_date">Registration date</label>
+      <div class="date-field"><span class="date-text"></span><input id="vehicleRegDate" type="date" /></div>
+    </div>
+    <div class="field">
+      <label for="vehicleNote" data-i18n="note_optional">Note (optional)</label>
+      <textarea id="vehicleNote" rows="2"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="vehicleCancel" data-i18n="cancel">Cancel</button>
+      <button class="btn btn-primary" id="vehicleSave" data-i18n="save">Save</button>
+    </div>
+    <div class="modal-actions" id="vehicleDeleteRow" style="display:none;">
+      <button class="btn btn-text-danger" id="vehicleDelete" data-i18n="delete_vehicle">Delete vehicle</button>
     </div>
   </div>
 </div>
